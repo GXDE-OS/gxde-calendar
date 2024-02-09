@@ -1,0 +1,24 @@
+Source: dde-calendar
+Section: utils
+Priority: optional
+Maintainer: Deepin Packages Builder <packages@deepin.com>
+Build-Depends:
+ debhelper (>=9),
+ pkg-config,
+ qtbase5-dev,
+ libdtkwidget-dev,
+ qttools5-dev-tools,
+ deepin-gettext-tools,
+ cmake
+Standards-Version: 3.9.6
+Homepage: http://www.deepin.org
+Vcs-Git: https://github.com/linuxdeepin/dde-calendar
+
+Package: dde-calendar
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ dde-api
+Description: Calendar software for Deepin OS
+ Calendar for Deepin Desktop Environment.
