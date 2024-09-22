@@ -20,6 +20,7 @@
 #include "calendarwindow.h"
 #include "environments.h"
 
+#include <QProcess>
 #include <QFile>
 #include <QDebug>
 #include <QDesktopWidget>
