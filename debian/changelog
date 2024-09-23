@@ -1,8 +1,8 @@
-dde-calendar (15.11~1.2.12) UNRELEASED; urgency=medium
+dde-calendar (15.11~1.2.12.1) UNRELEASED; urgency=medium
 
-  * Non-maintainer upload.
+  * recompile to avoid dtk15
 
- -- gfdgd_xi <3025613752@qq.com>  Sun, 22 Sep 2024 22:48:37 +0800
+ -- shenmo <shenmo@spark-app.store>  Sun, 22 Sep 2024 22:48:37 +0800
 
 dde-calendar (15.11~1.2.11-1+comsta) unstable; urgency=low
 
