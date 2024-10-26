@@ -22,6 +22,7 @@
 
 #include "weekindicator.h"
 #include "constants.h"
+#include "holidayapi.h"
 #include <QWidget>
 #include <QList>
 #include <QDate>
@@ -108,6 +109,7 @@ private:
 
     QFont m_dayNumFont;
     QFont m_dayLunarFont;
+    QFont m_workHolidayTextFont;
 
     QColor m_topBorderColor = Qt::red;
     QColor m_backgroundCircleColor = "#2ca7f8";
@@ -118,6 +120,9 @@ private:
     QColor m_selectedTextColor = Qt::white;
     QColor m_festivalTextColor = Qt::black;
     QColor m_notCurrentTextColor = "#b2b2b2";
+
+    QColor m_holidayTextColor = "#0082FA";
+    QColor m_workTextColor = Qt::red;
 
     QColor m_defaultLunarColor = "#929292";
     QColor m_currentDayLunarColor = m_currentDayTextColor;
@@ -132,6 +137,7 @@ private:
 
     WeekIndicator *m_weekIndicator;
     int m_firstWeekDay;
+    HolidayAPI *m_holidayAPI;
 };
 
 #endif // MYCALENDARWIDGET_H

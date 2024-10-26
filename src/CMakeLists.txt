@@ -14,6 +14,7 @@ set(SRCS
 ./dbuscalendar_adaptor.h
 ./calendarview.h
 ./constants.h
+./holidayapi.h
 ./weekindicator.cpp
 ./spinner.cpp
 ./infoview.cpp
@@ -22,6 +23,7 @@ set(SRCS
 ./main.cpp
 ./dbuscalendar_adaptor.cpp
 ./calendarwindow.cpp
+./holidayapi.cpp
 )
 
 set(QRC
@@ -33,6 +35,7 @@ find_package(PkgConfig REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 find_package(Qt5Concurrent REQUIRED)
 find_package(Qt5DBus REQUIRED)
+find_package(Qt5Network REQUIRED)
 find_package(DtkWidget REQUIRED)
 
 add_executable(${BIN_NAME} ${SRCS} ${QRC})
@@ -45,6 +48,7 @@ target_include_directories(${BIN_NAME} PUBLIC
 target_link_libraries(${BIN_NAME} PRIVATE
     ${DtkWidget_LIBRARIES}
     ${Qt5Widgets_LIBRARIES}
+    ${Qt5Network_LIBRARIES}
     ${Qt5Concurrent_LIBRARIES}
     ${Qt5DBus_LIBRARIES}
 )

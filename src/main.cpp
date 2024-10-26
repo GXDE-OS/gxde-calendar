@@ -54,16 +54,16 @@ int main(int argc, char *argv[])
 {
     DApplication::loadDXcbPlugin();
     DApplication a(argc, argv);
-    a.setOrganizationName("deepin");
+    a.setOrganizationName("GXDE OS");
     a.setApplicationName("dde-calendar");
     a.setApplicationVersion(DApplication::buildVersion("1.1"));
     a.loadTranslator();
 
     // meta information that necessary to create the about dialog.
-    a.setProductName(QApplication::translate("CalendarWindow", "Deepin Calendar"));
+    a.setProductName(QApplication::translate("CalendarWindow", "GXDE Calendar"));
     a.setProductIcon(DHiDPIHelper::loadNxPixmap(":/resources/icon/dde-calendar.svg"));
     a.setApplicationDescription(QApplication::translate("CalendarWindow", "Calendar is a date tool."));
-    a.setApplicationAcknowledgementPage("https://www.deepin.org/acknowledgments/dde-calendar");
+    a.setApplicationAcknowledgementPage("https://gitee.com/GXDE-OS/gxde-calendar");
 
     if (!a.setSingleInstance("dde-calendar", DApplication::UserScope)) {
         qDebug() << "there's an dde-calendar instance running.";

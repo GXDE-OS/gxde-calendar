@@ -38,6 +38,10 @@ CalendarView::CalendarView(QWidget *parent) : QWidget(parent)
     m_DBusInter = new CalendarDBus("com.deepin.api.LunarCalendar",
                                    "/com/deepin/api/LunarCalendar",
                                    QDBusConnection::sessionBus(), this);
+    // 加载假期数据
+    if (!m_holidayAPI) {
+        m_holidayAPI = new HolidayAPI();
+    }
     if (!queue)
         queue = new QQueue<int>;
     if (!lunarCache)
@@ -48,6 +52,7 @@ CalendarView::CalendarView(QWidget *parent) : QWidget(parent)
     m_dayNumFont.setPixelSize(22);
     m_dayNumFont.setWeight(QFont::Light);
     m_dayLunarFont.setPixelSize(12);
+    m_workHolidayTextFont.setPixelSize(12);
 
     setStyleSheet("QWidget { background: rgba(0, 0, 0, 0) }");
 
@@ -383,6 +388,19 @@ void CalendarView::paintCell(QWidget *cell)
     painter.setFont(m_dayNumFont);
     if (m_showState & ShowLunar) {
         painter.drawText(rect.adjusted(0, 0, 0, -cell->height() / 2 + 6), Qt::AlignCenter, dayNum);
+        QDate date = getCellDate(pos);
+        if (m_holidayAPI->getDayStatus(date) == HolidayAPI::DayStatus::holiday) {
+            // Holiday
+            painter.setFont(m_workHolidayTextFont);
+            painter.setPen(m_holidayTextColor);
+            painter.drawText(rect.adjusted(0, 0, -5, -cell->height() / 4 - 5), Qt::AlignRight, "休");
+        }
+        if (m_holidayAPI->getDayStatus(date) == HolidayAPI::DayStatus::work) {
+            // Holiday
+            painter.setFont(m_workHolidayTextFont);
+            painter.setPen(m_workTextColor);
+            painter.drawText(rect.adjusted(0, 0, -5, -cell->height() / 4 - 5), Qt::AlignRight, "班");
+        }
     } else {
         painter.drawText(rect, Qt::AlignCenter, dayNum, &test);
     }
