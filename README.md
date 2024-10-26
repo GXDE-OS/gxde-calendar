@@ -1,2 +1,2 @@
 # dde-calendar
-Calendar for Deepin Desktop Environment.
+Calendar for GXDE Desktop Environment.
