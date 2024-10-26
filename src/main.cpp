@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     DApplication::loadDXcbPlugin();
     DApplication a(argc, argv);
     a.setOrganizationName("GXDE OS");
-    a.setApplicationName("dde-calendar");
+    a.setApplicationName("gxde-calendar");
     a.setApplicationVersion(DApplication::buildVersion("1.1"));
     a.loadTranslator();
 
@@ -65,8 +65,8 @@ int main(int argc, char *argv[])
     a.setApplicationDescription(QApplication::translate("CalendarWindow", "Calendar is a date tool."));
     a.setApplicationAcknowledgementPage("https://gitee.com/GXDE-OS/gxde-calendar");
 
-    if (!a.setSingleInstance("dde-calendar", DApplication::UserScope)) {
-        qDebug() << "there's an dde-calendar instance running.";
+    if (!a.setSingleInstance("gxde-calendar", DApplication::UserScope)) {
+        qDebug() << "there's an gxde-calendar instance running.";
         QProcess::execute("dbus-send --print-reply --dest=com.deepin.Calendar "
                           "/com/deepin/Calendar com.deepin.Calendar.RaiseWindow");
 
