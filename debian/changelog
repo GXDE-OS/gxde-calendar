@@ -1,8 +1,8 @@
-gxde-calendar (2.0.0) UNRELEASED; urgency=medium
+gxde-calendar (2.0.1) UNRELEASED; urgency=medium
 
   * 支持在线获取假期数据
 
- -- shenmo <shenmo@spark-app.store>  Sun, 22 Sep 2024 22:48:37 +0800
+ -- gfdgd_xi <3025613752@qq.com>  Sat, 26 Oct 2024 16:50:16 +0800
 
 gxde-calendar (1.2.11-1+comsta) unstable; urgency=low
 
