@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.7)
 
-project(dde-calendar)
+project(gxde-calendar)
 
 # set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_CXX_STANDARD 14)
@@ -29,13 +29,13 @@ add_subdirectory("src")
 
 #qm files
 file(GLOB QM_FILES "translations/*.qm")
-install(FILES ${QM_FILES} DESTINATION share/dde-calendar/translations)
+install(FILES ${QM_FILES} DESTINATION share/gxde-calendar/translations)
 
 #desktop
-install(FILES dde-calendar.desktop DESTINATION share/applications)
+install(FILES gxde-calendar.desktop DESTINATION share/applications)
 
 #service
 install(FILES com.deepin.Calendar.service DESTINATION share/dbus-1/services)
 
 #icon
-install(FILES src/resources/icon/dde-calendar.svg DESTINATION share/icons/hicolor/scalable/apps/)
+install(FILES src/resources/icon/gxde-calendar.svg DESTINATION share/icons/hicolor/scalable/apps/)

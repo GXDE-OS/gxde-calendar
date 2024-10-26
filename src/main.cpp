@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 
     // meta information that necessary to create the about dialog.
     a.setProductName(QApplication::translate("CalendarWindow", "GXDE Calendar"));
-    a.setProductIcon(DHiDPIHelper::loadNxPixmap(":/resources/icon/dde-calendar.svg"));
+    a.setProductIcon(DHiDPIHelper::loadNxPixmap(":/resources/icon/gxde-calendar.svg"));
     a.setApplicationDescription(QApplication::translate("CalendarWindow", "Calendar is a date tool."));
     a.setApplicationAcknowledgementPage("https://gitee.com/GXDE-OS/gxde-calendar");
 

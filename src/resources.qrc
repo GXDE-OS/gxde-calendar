@@ -1,9 +1,9 @@
 <RCC>
     <qresource prefix="/">
         <file>resources/dde-calendar.qss</file>
-        <file>resources/icon/dde-calendar.svg</file>
-        <file>resources/icon/dde-calendar_96.png</file>
-        <file>resources/icon/dde-calendar_48.png</file>
+        <file>resources/icon/gxde-calendar.svg</file>
+        <file>resources/icon/gxde-calendar_96.png</file>
+        <file>resources/icon/gxde-calendar_48.png</file>
         <file>resources/icon/next_disabled.svg</file>
         <file>resources/icon/next_hover.svg</file>
         <file>resources/icon/next_normal.svg</file>

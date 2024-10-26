@@ -126,7 +126,7 @@ void CalendarWindow::initUI()
 
     m_icon = new QLabel(this);
     m_icon->setFixedSize(24, 24);
-    m_icon->setPixmap(DHiDPIHelper::loadNxPixmap(":/resources/icon/dde-calendar.svg")
+    m_icon->setPixmap(DHiDPIHelper::loadNxPixmap(":/resources/icon/gxde-calendar.svg")
                       .scaled(m_icon->size() * devicePixelRatioF()));
     m_icon->move(12, 8);
 

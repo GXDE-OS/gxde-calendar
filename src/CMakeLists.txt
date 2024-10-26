@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.7)
 
-set(BIN_NAME dde-calendar)
+set(BIN_NAME gxde-calendar)
 
 configure_file(environments.h.in environments.h @ONLY)
 
