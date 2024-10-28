@@ -7,6 +7,7 @@ HolidayAPI::HolidayAPI()
 {
     m_configPath = QDir::homePath() + "/.config/GXDE/gxde-calendar";
     initHolidayDataOffline();
+    initSentenseOnline();
     initHolidayDataOnline();
 }
 
@@ -32,6 +33,17 @@ void HolidayAPI::initHolidayDataOffline()
         m_holidayData = jsonData;
     }
     file.close();
+    emit refreshDataFinished();
+}
+
+// 请求一言数据
+void HolidayAPI::initSentenseOnline()
+{
+    QUrl url("https://v1.hitokoto.cn/?c=i&c=k");
+    QNetworkRequest request(url);
+    QNetworkReply *reply = m_http->get(request);
+
+    connect(reply, &QNetworkReply::finished, this, &HolidayAPI::handleQuerySentenseFinished);
 }
 
 // 用于请求假期数据
@@ -42,6 +54,34 @@ void HolidayAPI::initHolidayDataOnline()
     QNetworkReply *reply = m_http->get(request);
 
     connect(reply, &QNetworkReply::finished, this, &HolidayAPI::handleQueryHolidayFinished);
+}
+
+QStringList HolidayAPI::getDailySentense()
+{
+    return QStringList() << m_sentense << m_sentenseWho;
+}
+
+// 处理返回的 json 一言数据
+void HolidayAPI::handleQuerySentenseFinished()
+{
+    QNetworkReply *reply = qobject_cast<QNetworkReply *>(sender());
+
+    if (reply->error() != QNetworkReply::NoError) {
+        // 输出报错
+        qDebug() << reply->errorString();
+        return;
+    }
+
+    QJsonDocument document = QJsonDocument::fromJson(reply->readAll());
+
+    if (document.isEmpty()) {
+        return;
+    }
+    m_sentense = document.object().value("hitokoto").toString();
+    m_sentenseWho = document.object().value("from_who").toString();
+
+    // 发送信号提示以告诉其它部件资源已加载完成
+    emit refreshDataFinished();
 }
 
 // 处理返回的 json 假期数据

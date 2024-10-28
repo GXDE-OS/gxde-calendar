@@ -73,6 +73,7 @@ private:
     QPixmap getCalendarSnapshot() const;
     QPixmap joint(QPixmap & top, QPixmap & bottom) const;
     void updateTime() const;
+    void updateSentense() const;
     void updateDate() const;
 
     QAction *m_monAction;
@@ -85,6 +86,8 @@ private:
 
     QSettings *m_settings;
     QSettings *m_dateSettings;
+
+    QStringList m_sentenseData = {"", ""};
 };
 
 #endif // CALENDARWINDOW_H

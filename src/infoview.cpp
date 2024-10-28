@@ -31,7 +31,8 @@ InfoView::InfoView(QFrame *parent) :
     m_festivalLabel(new QLabel),
     m_todayButton(new DLinkButton),
     m_yearSpinner(new Spinner),
-    m_monthSpinner(new Spinner)
+    m_monthSpinner(new Spinner),
+    m_sentenseLabel(new QLabel)
 {
     QFont font = m_timeLabel->font();
     font.setWeight(QFont::Light);
@@ -39,6 +40,7 @@ InfoView::InfoView(QFrame *parent) :
     m_timeLabel->setFont(font);
 
     m_festivalLabel->setStyleSheet("font-size: 14px; color: #303030");
+    m_sentenseLabel->setStyleSheet("font-size: 14px; color: #303030");
 
     m_todayButton->setText(tr("Today"));
     m_todayButton->setStyleSheet("Dtk--Widget--DLinkButton {"
@@ -76,6 +78,7 @@ InfoView::InfoView(QFrame *parent) :
     rightLayout->setMargin(0);
     rightLayout->setSpacing(0);
     rightLayout->addStretch();
+    rightLayout->addWidget(m_sentenseLabel, 0, Qt::AlignVCenter | Qt::AlignRight);
     rightLayout->addWidget(m_todayButton, 0, Qt::AlignVCenter | Qt::AlignRight);
     rightLayout->addSpacing(14);
     rightLayout->addLayout(spinnerLayout);
@@ -115,6 +118,11 @@ InfoView::InfoView(QFrame *parent) :
         }
     });
     connect(m_todayButton, &DLinkButton::clicked, this, &InfoView::todayButtonClicked);
+}
+
+void InfoView::setSentense(const QString &sentense) const
+{
+    m_sentenseLabel->setText(sentense);
 }
 
 void InfoView::setTime(const QString &time) const

@@ -99,6 +99,10 @@ CalendarView::CalendarView(QWidget *parent) : QWidget(parent)
     setLayout(mainLayout);
 
     connect(this, &CalendarView::dateSelected, this, &CalendarView::handleCurrentDateChanged);
+    connect(m_holidayAPI, &HolidayAPI::refreshDataFinished, this, [this](){
+        update();
+        emit refreshSentenseFinished(m_holidayAPI->getDailySentense());
+    });
 }
 
 void CalendarView::handleCurrentDateChanged(const QDate date, const CaLunarDayInfo &detail) {

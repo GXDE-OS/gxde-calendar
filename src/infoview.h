@@ -42,6 +42,7 @@ signals:
 
 public slots:
     void setTime(const QString &time) const;
+    void setSentense(const QString &sentense) const;
     void setFestival(const QString &festival) const;
 
     int year() const;
@@ -56,6 +57,7 @@ public slots:
 
 private:
     QLabel * m_timeLabel;
+    QLabel * m_sentenseLabel;
     QLabel * m_festivalLabel;
     DLinkButton * m_todayButton;
     Spinner * m_yearSpinner;

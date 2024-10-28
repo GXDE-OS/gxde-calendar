@@ -173,6 +173,10 @@ void CalendarWindow::initUI()
         m_infoView->blockSignals(false);
     });
     connect(m_calendarView, &CalendarView::currentFestivalChanged, m_infoView, &InfoView::setFestival);
+    connect(m_calendarView, &CalendarView::refreshSentenseFinished, m_calendarView, [this](QStringList data){
+        m_sentenseData = data;
+        updateSentense();
+    });
     connect(m_infoView, &InfoView::todayButtonClicked,
             this, &CalendarWindow::handleTodayButtonClicked);
 
@@ -329,6 +333,15 @@ QPixmap CalendarWindow::joint(QPixmap &top, QPixmap &bottom) const
     painter.end();
 
     return target;
+}
+
+void CalendarWindow::updateSentense() const
+{
+    QString senShow = m_sentenseData.at(0);
+    if (m_sentenseData.at(1) != "") {
+        senShow += "--" + m_sentenseData.at(1);
+    }
+    m_infoView->setSentense(senShow);
 }
 
 void CalendarWindow::updateTime() const

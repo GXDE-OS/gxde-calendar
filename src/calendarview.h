@@ -73,6 +73,7 @@ signals:
     void currentDateChanged(const int year, const int month);
     void currentFestivalChanged(const QString &festival);
     void cellSelectableChanged(bool cellSelectable) const;
+    void refreshSentenseFinished(QStringList sentenseData);
 
 public slots:
     void setCurrentDate(const QDate date);

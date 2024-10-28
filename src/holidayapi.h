@@ -30,6 +30,8 @@ public:
     bool isWeekend(QDate date);
     DayStatus getDayStatus(QDate date);
 
+    QStringList getDailySentense();
+
 
 signals:
     void refreshDataFinished();
@@ -37,8 +39,13 @@ signals:
 private:
     void initHolidayDataOffline();
     void initHolidayDataOnline();
+    void initSentenseOnline();
     void handleQueryHolidayFinished();
+    void handleQuerySentenseFinished();
     void setData(QJsonDocument data);
+
+    QString m_sentense;
+    QString m_sentenseWho;
 
     bool networkReaded = false;
 
