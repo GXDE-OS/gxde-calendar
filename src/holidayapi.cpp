@@ -1,6 +1,7 @@
 #include "holidayapi.h"
 #include <QDir>
 #include <QFile>
+#include <QJsonArray>
 
 HolidayAPI::HolidayAPI()
     : m_http(new QNetworkAccessManager(this))
@@ -39,7 +40,20 @@ void HolidayAPI::initHolidayDataOffline()
 // 请求一言数据
 void HolidayAPI::initSentenseOnline()
 {
-    QUrl url("https://v1.hitokoto.cn/?c=i&c=k");
+    /*QUrl url("https://v1.hitokoto.cn/?c=i&c=k");
+    QNetworkRequest request(url);
+    QNetworkReply *reply = m_http->get(request);*/
+
+    QUrl url("http://dict.youdao.com/infoline/style/cardList");
+    QUrlQuery query;
+    query.addQueryItem("apiversion", "3.0");
+    query.addQueryItem("client", "deskdict");
+    query.addQueryItem("style", "daily");
+    query.addQueryItem("lastId", "0");
+    query.addQueryItem("keyfrom", "deskdict.8.1.2.0");
+    query.addQueryItem("size", "1");
+    url.setQuery(query.toString(QUrl::FullyEncoded));
+
     QNetworkRequest request(url);
     QNetworkReply *reply = m_http->get(request);
 
@@ -72,13 +86,21 @@ void HolidayAPI::handleQuerySentenseFinished()
         return;
     }
 
-    QJsonDocument document = QJsonDocument::fromJson(reply->readAll());
+    /*QJsonDocument document = QJsonDocument::fromJson(reply->readAll());
 
     if (document.isEmpty()) {
         return;
     }
     m_sentense = document.object().value("hitokoto").toString();
-    m_sentenseWho = document.object().value("from_who").toString();
+    m_sentenseWho = document.object().value("from_who").toString();*/
+
+    QJsonDocument document = QJsonDocument::fromJson(reply->readAll());
+    QJsonObject object = document.array().at(0).toObject();
+
+    const QString title = object.value("title").toString();
+    const QString summary = object.value("summary").toString();
+
+    m_sentense = summary;
 
     // 发送信号提示以告诉其它部件资源已加载完成
     emit refreshDataFinished();

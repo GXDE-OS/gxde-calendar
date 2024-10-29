@@ -67,18 +67,23 @@ InfoView::InfoView(QFrame *parent) :
     spinnerLayout->addWidget(m_yearSpinner);
     spinnerLayout->addWidget(m_monthSpinner);
 
+    QHBoxLayout * timeLayout = new QHBoxLayout();
+    timeLayout->addWidget(m_timeLabel, 0, Qt::AlignVCenter | Qt::AlignLeft);
+    timeLayout->addWidget(m_sentenseLabel, 0, Qt::AlignBottom | Qt::AlignRight);
+
     QVBoxLayout * leftLayout = new QVBoxLayout;
     leftLayout->setMargin(0);
     leftLayout->setSpacing(0);
     leftLayout->addStretch();
-    leftLayout->addWidget(m_timeLabel, 0, Qt::AlignVCenter | Qt::AlignLeft);
+    //leftLayout->addWidget(m_timeLabel, 0, Qt::AlignVCenter | Qt::AlignLeft);
+    leftLayout->addLayout(timeLayout, 0);
     leftLayout->addWidget(m_festivalLabel, 0, Qt::AlignVCenter | Qt::AlignLeft);
     leftLayout->addSpacing(6);
     QVBoxLayout * rightLayout = new QVBoxLayout;
     rightLayout->setMargin(0);
     rightLayout->setSpacing(0);
     rightLayout->addStretch();
-    rightLayout->addWidget(m_sentenseLabel, 0, Qt::AlignVCenter | Qt::AlignRight);
+    //rightLayout->addWidget(m_sentenseLabel, 0, Qt::AlignVCenter | Qt::AlignRight);
     rightLayout->addWidget(m_todayButton, 0, Qt::AlignVCenter | Qt::AlignRight);
     rightLayout->addSpacing(14);
     rightLayout->addLayout(spinnerLayout);
@@ -122,7 +127,7 @@ InfoView::InfoView(QFrame *parent) :
 
 void InfoView::setSentense(const QString &sentense) const
 {
-    m_sentenseLabel->setText(sentense);
+    m_sentenseLabel->setText("      每日一言：" + sentense);
 }
 
 void InfoView::setTime(const QString &time) const
