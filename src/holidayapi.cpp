@@ -63,7 +63,7 @@ void HolidayAPI::initSentenseOnline()
 // 用于请求假期数据
 void HolidayAPI::initHolidayDataOnline()
 {
-    QUrl url("https://datetime.gxde.org/holiday.json");
+    QUrl url("https://datetime.gxde.top/holiday.json");
     QNetworkRequest request(url);
     QNetworkReply *reply = m_http->get(request);
 
