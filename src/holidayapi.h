@@ -45,6 +45,7 @@ private:
     void setData(QJsonDocument data);
 
     QString m_sentense;
+    QString m_sentenseEn;
     QString m_sentenseWho;
 
     bool networkReaded = false;

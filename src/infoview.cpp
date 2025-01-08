@@ -127,7 +127,11 @@ InfoView::InfoView(QFrame *parent) :
 
 void InfoView::setSentense(const QString &sentense) const
 {
-    m_sentenseLabel->setText("      每日一言：" + sentense);
+    if (QLocale::system().name().contains("zh")) {
+        m_sentenseLabel->setText("      每日一言：" + sentense);
+        return;
+    }
+    m_sentenseLabel->setText("      Daily Quote: " + sentense);
 }
 
 void InfoView::setTime(const QString &time) const

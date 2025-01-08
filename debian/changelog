@@ -1,10 +1,10 @@
-gxde-calendar (2.0.5) UNRELEASED; urgency=medium
+gxde-calendar (2.0.6) UNRELEASED; urgency=medium
 
   * 支持在线获取假期数据
-  * 新增：每日一言
+  * 每日一言支持英语
   * 修改假期数据获取 API
 
- -- gfdgd_xi <3025613752@qq.com>  Sun, 22 Dec 2024 08:16:21 +0800
+ -- gfdgd_xi <3025613752@qq.com>  Wed, 08 Jan 2025 22:31:07 +0800
 
 gxde-calendar (1.2.11-1+comsta) unstable; urgency=low
 

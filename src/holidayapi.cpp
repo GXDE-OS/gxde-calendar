@@ -72,7 +72,7 @@ void HolidayAPI::initHolidayDataOnline()
 
 QStringList HolidayAPI::getDailySentense()
 {
-    return QStringList() << m_sentense << m_sentenseWho;
+    return QStringList() << m_sentense << m_sentenseWho << m_sentenseEn << m_sentenseWho;
 }
 
 // 处理返回的 json 一言数据
@@ -101,6 +101,7 @@ void HolidayAPI::handleQuerySentenseFinished()
     const QString summary = object.value("summary").toString();
 
     m_sentense = summary;
+    m_sentenseEn = title;
 
     // 发送信号提示以告诉其它部件资源已加载完成
     emit refreshDataFinished();

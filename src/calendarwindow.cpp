@@ -337,9 +337,17 @@ QPixmap CalendarWindow::joint(QPixmap &top, QPixmap &bottom) const
 
 void CalendarWindow::updateSentense() const
 {
-    QString senShow = m_sentenseData.at(0);
+    if (QLocale::system().name().contains("zh")) {
+        QString senShow = m_sentenseData.at(0);
+        if (m_sentenseData.at(1) != "") {
+            senShow += "--" + m_sentenseData.at(1);
+        }
+        m_infoView->setSentense(senShow);
+        return;
+    }
+    QString senShow = m_sentenseData.at(2);
     if (m_sentenseData.at(1) != "") {
-        senShow += "--" + m_sentenseData.at(1);
+        senShow += "--" + m_sentenseData.at(3);
     }
     m_infoView->setSentense(senShow);
 }
