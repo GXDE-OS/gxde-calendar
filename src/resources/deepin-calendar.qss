@@ -1,5 +1,5 @@
 QFrame#CalendarBackground {
-    background-color: rgba(220, 220, 220, 200)
+    background-color: rgba(220, 220, 220, 00)
 }
 
 QLabel#CalendarHeaderWeekday {

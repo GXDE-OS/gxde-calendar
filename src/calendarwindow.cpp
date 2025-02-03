@@ -64,6 +64,8 @@ CalendarWindow::CalendarWindow() :
     setWindowTitle(tr("Deepin Calendar"));
 
     new CalendarAdaptor(this);
+
+    setEnableWindowBackground(1);
 }
 
 void CalendarWindow::handleTodayButtonClicked()
@@ -113,7 +115,7 @@ void CalendarWindow::initUI()
     m_contentBackground = new QFrame;
     m_contentBackground->setObjectName("CalendarBackground");
     m_contentBackground->setStyleSheet("QFrame#CalendarBackground { "
-                             "background:white;"
+                             "background:#00ffffff;"
                              "}");
     m_contentBackground->setFixedSize(CalendarWidth + ContentLeftRightPadding * 2,
                                       InfoViewHeight + CalendarHeight);
