@@ -138,7 +138,7 @@ private:
 
     WeekIndicator *m_weekIndicator;
     int m_firstWeekDay;
-    HolidayAPI *m_holidayAPI;
+    HolidayAPI *m_holidayAPI = nullptr;
 };
 
 #endif // MYCALENDARWIDGET_H
