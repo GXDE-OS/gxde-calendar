@@ -127,11 +127,16 @@ InfoView::InfoView(QFrame *parent) :
 
 void InfoView::setSentense(const QString &sentense) const
 {
+    // 超出范围显示省略号
+    QString showText;
     if (QLocale::system().name().contains("zh")) {
-        m_sentenseLabel->setText("      每日一言：" + sentense);
-        return;
+        showText = "每日一言：" + sentense;
     }
-    m_sentenseLabel->setText("      Daily Quote: " + sentense);
+    else {
+        showText = "Daily Quote: " + sentense;
+    }
+    m_sentenseLabel->setToolTip(showText);
+    m_sentenseLabel->setText("      " + showText);
 }
 
 void InfoView::setTime(const QString &time) const

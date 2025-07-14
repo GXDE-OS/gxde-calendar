@@ -61,7 +61,7 @@ CalendarWindow::CalendarWindow() :
     initDateChangeMonitor();
     initLunar();
 
-    setWindowTitle(tr("Deepin Calendar"));
+    setWindowTitle(tr("GXDE Calendar"));
 
     new CalendarAdaptor(this);
 
