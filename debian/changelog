@@ -1,9 +1,10 @@
-gxde-calendar (2.0.9) UNRELEASED; urgency=medium
+gxde-calendar (2.0.10) UNRELEASED; urgency=medium
 
   * 修复 Loongnix25 下提示总线错误无法启动的问题
   * 每日一言处新增鼠标悬浮提示以解决修复文本显示不全的问题
+  * 修复日历无法同时显示节气、农历节日和公历节日的问题
 
- -- gfdgd_xi <3025613752@qq.com>  Mon, 14 Jul 2025 18:13:08 +0800
+ -- gfdgd_xi <3025613752@qq.com>  Sun, 10 Aug 2025 07:53:11 +0800
 
 gxde-calendar (1.2.11-1+comsta) unstable; urgency=low
 

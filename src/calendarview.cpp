@@ -240,21 +240,23 @@ void CalendarView::updateDate()
 
 void CalendarView::updateCurrentLunar(const CaLunarDayInfo &info)
 {
+    QString festival;
     if (!info.mLunarFestival.isEmpty()) {
-        emit currentFestivalChanged(info.mLunarFestival);
-    } else if (!info.mTerm.isEmpty()) {
-        emit currentFestivalChanged(info.mTerm);
-    } else if (!info.mSolarFestival.isEmpty()) {
+        festival += info.mLunarFestival + " ";
+    }
+    if (!info.mTerm.isEmpty()) {
+        festival += info.mTerm + " ";
+    }
+    if (!info.mSolarFestival.isEmpty()) {
         QStringList tmpFestival = info.mSolarFestival.split(" ");
 
         if (tmpFestival.length()>=3) {
-            emit currentFestivalChanged(QString("%1 %2").arg(tmpFestival[0]).arg(tmpFestival[1]));
+            festival += QString("%1 %2").arg(tmpFestival[0]).arg(tmpFestival[1]) + " ";
         } else {
-            emit currentFestivalChanged(info.mSolarFestival);
+            festival += info.mSolarFestival + " ";
         }
-    } else {
-        emit currentFestivalChanged("");
     }
+    emit currentFestivalChanged(festival);
 
     updateDate();
 }
