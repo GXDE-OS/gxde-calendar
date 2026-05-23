@@ -128,8 +128,10 @@ void CalendarWindow::initUI()
 
     m_icon = new QLabel(this);
     m_icon->setFixedSize(24, 24);
-    m_icon->setPixmap(DHiDPIHelper::loadNxPixmap(":/resources/icon/gxde-calendar.svg")
-                      .scaled(m_icon->size() * devicePixelRatioF()));
+    // 修复高分屏下图标模糊的问题
+    // m_icon->setPixmap(DHiDPIHelper::loadNxPixmap(":/resources/icon/gxde-calendar.svg")
+    //                  .scaled(m_icon->size() * devicePixelRatioF()));
+    m_icon->setPixmap(QIcon::fromTheme("gxde-calendar").pixmap(m_icon->size()));
     m_icon->move(12, 8);
 
     m_infoView = new InfoView;

@@ -54,6 +54,8 @@ int main(int argc, char *argv[])
 {
     DApplication::loadDXcbPlugin();
     DApplication a(argc, argv);
+    // 启用高DPI支持
+    a.setAttribute(Qt::AA_UseHighDpiPixmaps);
     a.setOrganizationName("GXDE OS");
     a.setApplicationName("gxde-calendar");
     a.setApplicationVersion(DApplication::buildVersion("1.1"));
@@ -61,7 +63,9 @@ int main(int argc, char *argv[])
 
     // meta information that necessary to create the about dialog.
     a.setProductName(QApplication::translate("CalendarWindow", "GXDE Calendar"));
-    a.setProductIcon(DHiDPIHelper::loadNxPixmap(":/resources/icon/gxde-calendar.svg"));
+    // 修复高分屏下图标模糊的问题
+    // a.setProductIcon(DHiDPIHelper::loadNxPixmap(":/resources/icon/gxde-calendar.svg"));
+    a.setProductIcon(QIcon::fromTheme("gxde-calendar"));
     a.setApplicationDescription(QApplication::translate("CalendarWindow", "Calendar is a date tool."));
     a.setApplicationAcknowledgementPage("https://gitee.com/GXDE-OS/gxde-calendar");
 
