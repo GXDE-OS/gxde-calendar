@@ -32,25 +32,33 @@ set(QRC
 
 # Find the library
 find_package(PkgConfig REQUIRED)
-find_package(Qt5Widgets REQUIRED)
-find_package(Qt5Concurrent REQUIRED)
-find_package(Qt5DBus REQUIRED)
-find_package(Qt5Network REQUIRED)
-find_package(DtkWidget REQUIRED)
+find_package(Qt6Widgets REQUIRED)
+find_package(Qt6Concurrent REQUIRED)
+find_package(Qt6DBus REQUIRED)
+find_package(Qt6Network REQUIRED)
+find_package(Qt6Gui REQUIRED)
+find_package(Dtk6Core REQUIRED)
+find_package(Dtk6Gui REQUIRED)
 
 add_executable(${BIN_NAME} ${SRCS} ${QRC})
 target_include_directories(${BIN_NAME} PUBLIC
-    ${DtkWidget_INCLUDE_DIRS}
-    ${Qt5Gui_PRIVATE_INCLUDE_DIRS}
+    /usr/include/dtk2/DWidget
+    /usr/include/dtk6/DCore
+    /usr/include/dtk6/DLog
+    ${Dtk6Core_INCLUDE_DIRS}
+    ${Dtk6Gui_INCLUDE_DIRS}
+    ${Qt6Gui_PRIVATE_INCLUDE_DIRS}
     ${PROJECT_BINARY_DIR}
 )
 
 target_link_libraries(${BIN_NAME} PRIVATE
-    ${DtkWidget_LIBRARIES}
-    ${Qt5Widgets_LIBRARIES}
-    ${Qt5Network_LIBRARIES}
-    ${Qt5Concurrent_LIBRARIES}
-    ${Qt5DBus_LIBRARIES}
+    dtk2widget
+    Dtk6::Core
+    Dtk6::Gui
+    ${Qt6Widgets_LIBRARIES}
+    ${Qt6Network_LIBRARIES}
+    ${Qt6Concurrent_LIBRARIES}
+    ${Qt6DBus_LIBRARIES}
 )
 
 # bin

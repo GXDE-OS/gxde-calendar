@@ -23,7 +23,7 @@
 #include <QProcess>
 #include <QFile>
 #include <QDebug>
-#include <QDesktopWidget>
+#include <QScreen>
 #include <QDBusConnection>
 
 #include <DApplication>
@@ -46,8 +46,8 @@ QString GetStyleSheetContent() {
 }
 
 QRect PrimaryRect() {
-    QDesktopWidget *w = QApplication::desktop();
-    return w->screenGeometry(w->primaryScreen());
+    QScreen *screen = QApplication::primaryScreen();
+    return screen->geometry();
 }
 
 int main(int argc, char *argv[])

@@ -65,7 +65,7 @@ CalendarView::CalendarView(QWidget *parent) : QWidget(parent)
     separatorLine->setStyleSheet("border: 1px solid rgba(0, 0, 0, 0.05);");
 
     QHBoxLayout* separatorLineLayout = new QHBoxLayout;
-    separatorLineLayout->setMargin(0);
+    separatorLineLayout->setContentsMargins(0, 0, 0, 0);
     separatorLineLayout->setSpacing(0);
     separatorLineLayout->addStretch(1);
     separatorLineLayout->addWidget(separatorLine);
@@ -73,7 +73,7 @@ CalendarView::CalendarView(QWidget *parent) : QWidget(parent)
 
     // cells grid
     QGridLayout *gridLayout = new QGridLayout;
-    gridLayout->setMargin(0);
+    gridLayout->setContentsMargins(0, 0, 0, 0);
     gridLayout->setSpacing(0);
     for (int r = 0; r != 6; ++r) {
         for (int c = 0; c != 7; ++c) {
@@ -93,7 +93,7 @@ CalendarView::CalendarView(QWidget *parent) : QWidget(parent)
     mainLayout->addLayout(separatorLineLayout);
     mainLayout->addWidget(m_weekIndicator, 0, Qt::AlignHCenter);
     mainLayout->addWidget(gridWidget, 0,  Qt::AlignHCenter);
-    mainLayout->setMargin(0);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
 
     setLayout(mainLayout);
@@ -363,7 +363,7 @@ void CalendarView::paintCell(QWidget *cell)
     {
         QRect fillRect = rect;
 
-        painter.setRenderHints(QPainter::HighQualityAntialiasing);
+        painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
         painter.setBrush(QBrush(m_backgroundCircleColor));
         painter.setPen(Qt::NoPen);
         painter.drawRoundedRect(fillRect, 4, 4);

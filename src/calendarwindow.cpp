@@ -101,7 +101,7 @@ void CalendarWindow::nextMonth()
 
 void CalendarWindow::wheelEvent(QWheelEvent * e)
 {
-    if (e->delta() < 0) {
+    if (e->angleDelta().y() < 0) {
         nextMonth();
     } else {
         if (m_infoView->year() > MinYearValue || m_infoView->month() != 1) {
@@ -160,7 +160,7 @@ void CalendarWindow::initUI()
                                 m_animationContainer->height() * 2);
 
     QVBoxLayout * contentLayout = new QVBoxLayout;
-    contentLayout->setMargin(0);
+    contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(0);
     contentLayout->addWidget(m_infoView, 0, Qt::AlignHCenter);
     contentLayout->addWidget(m_calendarView, 0, Qt::AlignHCenter);
@@ -368,6 +368,6 @@ void CalendarWindow::updateDate() const
 
     DTitlebar *titlebar = this->titlebar();
     if (titlebar) {
-        titlebar->setTitle(currentDate.toString(Qt::SystemLocaleLongDate));
+        titlebar->setTitle(currentDate.toString(Qt::ISODate));
     }
 }

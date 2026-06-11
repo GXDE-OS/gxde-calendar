@@ -19,9 +19,10 @@ class QByteArray;
 template<class T> class QList;
 template<class Key, class Value> class QMap;
 class QString;
-class QStringList;
 class QVariant;
 QT_END_NAMESPACE
+
+typedef QList<QString> QStringList;
 
 /*
  * Adaptor class for interface com.deepin.Calendar

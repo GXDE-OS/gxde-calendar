@@ -24,6 +24,7 @@
 #include <QLabel>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
+#include <QLocale>
 
 InfoView::InfoView(QFrame *parent) :
     QFrame(parent),
@@ -58,11 +59,11 @@ InfoView::InfoView(QFrame *parent) :
                                  "}");
 
     QHBoxLayout * mainLayout = new QHBoxLayout(this);
-    mainLayout->setMargin(0);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
 
     QHBoxLayout * spinnerLayout = new QHBoxLayout;
-    spinnerLayout->setMargin(0);
+    spinnerLayout->setContentsMargins(0, 0, 0, 0);
     spinnerLayout->setSpacing(0);
     spinnerLayout->addWidget(m_yearSpinner);
     spinnerLayout->addWidget(m_monthSpinner);
@@ -72,7 +73,7 @@ InfoView::InfoView(QFrame *parent) :
     timeLayout->addWidget(m_sentenseLabel, 0, Qt::AlignBottom | Qt::AlignRight);
 
     QVBoxLayout * leftLayout = new QVBoxLayout;
-    leftLayout->setMargin(0);
+    leftLayout->setContentsMargins(0, 0, 0, 0);
     leftLayout->setSpacing(0);
     leftLayout->addStretch();
     //leftLayout->addWidget(m_timeLabel, 0, Qt::AlignVCenter | Qt::AlignLeft);
@@ -80,7 +81,7 @@ InfoView::InfoView(QFrame *parent) :
     leftLayout->addWidget(m_festivalLabel, 0, Qt::AlignVCenter | Qt::AlignLeft);
     leftLayout->addSpacing(6);
     QVBoxLayout * rightLayout = new QVBoxLayout;
-    rightLayout->setMargin(0);
+    rightLayout->setContentsMargins(0, 0, 0, 0);
     rightLayout->setSpacing(0);
     rightLayout->addStretch();
     //rightLayout->addWidget(m_sentenseLabel, 0, Qt::AlignVCenter | Qt::AlignRight);

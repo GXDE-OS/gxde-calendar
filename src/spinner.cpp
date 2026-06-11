@@ -38,7 +38,7 @@ Spinner::Spinner(QWidget *parent) :
     m_label->setText(QString::number(m_value));
 
     QHBoxLayout * layout = new QHBoxLayout(this);
-    layout->setMargin(0);
+    layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
     layout->addWidget(m_prevButton);
     layout->addWidget(m_label);

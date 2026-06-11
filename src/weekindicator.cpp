@@ -26,7 +26,7 @@
 WeekIndicator::WeekIndicator(QWidget *parent) : QWidget(parent)
 {
     m_mainLayout = new QHBoxLayout;
-    m_mainLayout->setMargin(0);
+    m_mainLayout->setContentsMargins(0, 0, 0, 0);
     m_mainLayout->setSpacing(0);
     setLayout(m_mainLayout);
 }
