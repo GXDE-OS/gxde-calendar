@@ -37,24 +37,21 @@ find_package(Qt6Concurrent REQUIRED)
 find_package(Qt6DBus REQUIRED)
 find_package(Qt6Network REQUIRED)
 find_package(Qt6Gui REQUIRED)
+find_package(Dtk2widget REQUIRED)
 find_package(Dtk6Core REQUIRED)
-find_package(Dtk6Gui REQUIRED)
 
 add_executable(${BIN_NAME} ${SRCS} ${QRC})
 target_include_directories(${BIN_NAME} PUBLIC
-    /usr/include/dtk2/DWidget
+    ${Dtk2widget_INCLUDE_DIRS}
     /usr/include/dtk6/DCore
     /usr/include/dtk6/DLog
-    ${Dtk6Core_INCLUDE_DIRS}
-    ${Dtk6Gui_INCLUDE_DIRS}
     ${Qt6Gui_PRIVATE_INCLUDE_DIRS}
     ${PROJECT_BINARY_DIR}
 )
 
 target_link_libraries(${BIN_NAME} PRIVATE
-    dtk2widget
+    ${Dtk2widget_LIBRARIES}
     Dtk6::Core
-    Dtk6::Gui
     ${Qt6Widgets_LIBRARIES}
     ${Qt6Network_LIBRARIES}
     ${Qt6Concurrent_LIBRARIES}
