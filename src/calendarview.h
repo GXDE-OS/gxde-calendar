@@ -67,6 +67,9 @@ public:
     void setFirstWeekday(int weekday);
     int getDateType(const QDate &date);
     inline bool cellSelectable() const {return m_cellSelectable;}
+    inline QDate currentDate() const {
+        return m_currentDate;
+    }
 
 signals:
     void dateSelected(const QDate date, const CaLunarDayInfo &detail) const;

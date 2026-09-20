@@ -21,11 +21,16 @@
 #include "dbuscalendar_adaptor.h"
 #include "constants.h"
 #include "infoview.h"
+#include "sidebarcalendarwidget.h"
+#include "calendarviews.h"
+#include "viewswitcher.h"
 
 #include <QDate>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QScrollArea>
+#include <QStackedWidget>
 #include <QPropertyAnimation>
 #include <QWheelEvent>
 #include <QPainter>
@@ -46,7 +51,18 @@ static const int InfoViewHeight = 90;
 
 static const int ContentLeftRightPadding = 80;
 
+static const int SidebarWidth = 220;
+static const int ViewSwitcherWidth = 160;
+static const int ViewSwitcherHeight = 24;
+
 static const int MinYearValue = 1900;
+
+enum ViewIndex {
+    YearViewIndex = 0,
+    MonthViewIndex = 1,
+    WeekViewIndex = 2,
+    DayViewIndex = 3,
+};
 
 CalendarWindow::CalendarWindow() :
     DMainWindow(nullptr)
@@ -112,6 +128,9 @@ void CalendarWindow::wheelEvent(QWheelEvent * e)
 
 void CalendarWindow::initUI()
 {
+    const int weekday = m_settings->value("weekday", Sunday).toInt();
+
+    // ---------------- DDE 15 styled ----------------
     m_contentBackground = new QFrame;
     m_contentBackground->setObjectName("CalendarBackground");
     m_contentBackground->setStyleSheet("QFrame#CalendarBackground { "
@@ -119,12 +138,6 @@ void CalendarWindow::initUI()
                              "}");
     m_contentBackground->setFixedSize(CalendarWidth + ContentLeftRightPadding * 2,
                                       InfoViewHeight + CalendarHeight);
-
-    DTitlebar *titlebar = this->titlebar();
-    const int titlebarHeight = titlebar ? titlebar->height() : 0;
-
-    setFixedSize(m_contentBackground->width(),
-                 m_contentBackground->height() + titlebarHeight);
 
     m_icon = new QLabel(this);
     m_icon->setFixedSize(24, 24);
@@ -144,8 +157,13 @@ void CalendarWindow::initUI()
 
     m_calendarView = new CalendarView;
     m_calendarView->setFixedSize(CalendarWidth, CalendarHeight);
-    m_calendarView->setFirstWeekday(m_settings->value("weekday", Sunday).toInt());
+    m_calendarView->setFirstWeekday(weekday);
     m_calendarView->setCurrentDate(QDate::currentDate());
+
+    m_sidebarCalendar = new SidebarCalendarWidget;
+    m_sidebarCalendar->setFixedSize(SidebarWidth, CalendarHeight);
+    m_sidebarCalendar->setFirstWeekday(weekday);
+    m_sidebarCalendar->setDate(QDate::currentDate());
 
     m_animationContainer = new QFrame(m_contentBackground);
     m_animationContainer->setStyleSheet("QFrame { background: rgba(0, 0, 0, 0) }");
@@ -159,15 +177,69 @@ void CalendarWindow::initUI()
     m_fakeContent->setFixedSize(m_animationContainer->width(),
                                 m_animationContainer->height() * 2);
 
-    QVBoxLayout * contentLayout = new QVBoxLayout;
-    contentLayout->setContentsMargins(0, 0, 0, 0);
-    contentLayout->setSpacing(0);
-    contentLayout->addWidget(m_infoView, 0, Qt::AlignHCenter);
-    contentLayout->addWidget(m_calendarView, 0, Qt::AlignHCenter);
+    m_dde15Layout = new QVBoxLayout;
+    m_dde15Layout->setContentsMargins(0, 0, 0, 0);
+    m_dde15Layout->setSpacing(0);
+    m_dde15Layout->addWidget(m_infoView, 0, Qt::AlignHCenter);
+    // Month view m_calendarView is imported dynamically by applyLayout()
+    m_contentBackground->setLayout(m_dde15Layout);
 
-    m_contentBackground->setLayout(contentLayout);
+    // ---------------- DDE 25 styled ----------------
+    m_viewSwitcher = new ViewSwitcher;
+    m_viewSwitcher->setLabels(QStringList() << tr("Y") << tr("M") << tr("W")
+        << tr("D"));
+    m_viewSwitcher->setFixedSize(ViewSwitcherWidth, ViewSwitcherHeight);
 
-    setCentralWidget(m_contentBackground);
+    m_viewStack = new QStackedWidget;
+
+    m_yearView = new YearView;
+    m_yearView->setFixedSize(CalendarWidth, CalendarHeight);
+    m_yearView->setFirstWeekday(weekday);
+    m_yearView->setCurrentDate(QDate::currentDate());
+
+    m_weekView = new WeekView;
+    m_weekView->setFixedSize(CalendarWidth, CalendarHeight);
+    m_weekView->setFirstWeekday(weekday);
+    m_weekView->setCurrentDate(QDate::currentDate());
+
+    m_dayView = new DayView;
+    m_dayView->setFixedSize(CalendarWidth, CalendarHeight);
+    m_dayView->setCurrentDate(QDate::currentDate());
+
+    m_viewStack->addWidget(m_yearView);      // YearViewIndex
+    m_viewStack->addWidget(m_calendarView);  // MonthViewIndex
+    m_viewStack->addWidget(m_weekView);      // WeekViewIndex
+    m_viewStack->addWidget(m_dayView);       // DayViewIndex
+
+    m_dde25Page = new QWidget;
+    m_dde25Page->setObjectName("Dde25Page");
+    m_dde25Page->setStyleSheet("QWidget#Dde25Page { background: transparent; }");
+    QHBoxLayout *dde25Layout = new QHBoxLayout(m_dde25Page);
+    dde25Layout->setContentsMargins(0, 0, 0, 0);
+    dde25Layout->setSpacing(0);
+    dde25Layout->addWidget(m_sidebarCalendar);
+    dde25Layout->addWidget(m_viewStack, 0, Qt::AlignHCenter);
+
+    // ---------------- Main stack ----------------
+    m_mainStack = new QStackedWidget;
+    m_mainStack->setObjectName("RootBackground");
+    m_mainStack->setStyleSheet("QStackedWidget#RootBackground { background: transparent; }");
+    m_mainStack->addWidget(m_contentBackground);
+    m_mainStack->addWidget(m_dde25Page);
+
+    setCentralWidget(m_mainStack);
+
+    connect(m_viewSwitcher, &ViewSwitcher::currentChanged,
+        m_viewStack, &QStackedWidget::setCurrentIndex);
+    m_viewSwitcher->setCurrentIndex(MonthViewIndex);
+
+    connect(m_yearView, &YearView::dateClicked, this, [this](const QDate &date) {
+        m_calendarView->setCurrentDate(date);
+        m_viewSwitcher->setCurrentIndex(MonthViewIndex);
+    });
+    connect(m_weekView, &WeekView::dateClicked, this, [this](const QDate &date) {
+        m_calendarView->setCurrentDate(date);
+    });
 
     connect(m_calendarView, &CalendarView::currentDateChanged, [this](int year, int month){
         qDebug() << "current date changed" << year << month;
@@ -175,6 +247,10 @@ void CalendarWindow::initUI()
         m_infoView->setYear(year);
         m_infoView->setMonth(month);
         m_infoView->blockSignals(false);
+        m_sidebarCalendar->setDate(m_calendarView->currentDate());
+        m_yearView->setCurrentDate(m_calendarView->currentDate());
+        m_weekView->setCurrentDate(m_calendarView->currentDate());
+        m_dayView->setCurrentDate(m_calendarView->currentDate());
     });
     connect(m_calendarView, &CalendarView::currentFestivalChanged, m_infoView, &InfoView::setFestival);
     connect(m_calendarView, &CalendarView::refreshSentenseFinished, m_calendarView, [this](QStringList data){
@@ -193,7 +269,15 @@ void CalendarWindow::initUI()
         handleCurrentYearMonthChanged(year, month);
     });
 
+    connect(m_sidebarCalendar, &SidebarCalendarWidget::dateClicked, this, [this](const QDate &date) {
+        m_calendarView->setCurrentDate(date);
+    });
+    connect(m_sidebarCalendar, &SidebarCalendarWidget::monthChanged, this, [this](int year, int month) {
+        handleCurrentYearMonthChanged(year, month);
+    });
+
     setupMenu();
+    applyLayout();
 }
 
 void CalendarWindow::initAnimation()
@@ -245,6 +329,11 @@ void CalendarWindow::setupMenu()
         m_satAction = firstWeekday->addAction(locale.dayName(6, QLocale::ShortFormat));
         m_sunAction = firstWeekday->addAction(locale.dayName(7, QLocale::ShortFormat));
 
+        titlebar->menu()->addSeparator();
+        m_layoutAction = titlebar->menu()->addAction(tr("Switch to DDE 25 layout"));
+
+        titlebar->setCustomWidget(m_viewSwitcher, false);
+
         connect(titlebar->menu(), &QMenu::triggered, this, &CalendarWindow::menuItemInvoked);
     }
 }
@@ -252,47 +341,95 @@ void CalendarWindow::setupMenu()
 
 void CalendarWindow::menuItemInvoked(QAction *action)
 {
+    if (action == m_layoutAction) {
+        const bool dde25 = m_settings->value("layout", QStringLiteral("dde25")).toString() != QStringLiteral("dde15");
+        const bool newDde25 = !dde25;
+        m_settings->setValue("layout", newDde25 ? QStringLiteral("dde25") : QStringLiteral("dde15"));
+        applyLayout();
+        return;
+    }
 
     if (action == m_monAction) {
-        m_calendarView->setFirstWeekday(Monday);
-        m_settings->setValue("weekday", Monday);
+        setWeekday(Monday);
         return;
     }
 
     if (action == m_tueAction) {
-        m_calendarView->setFirstWeekday(Tuesday);
-        m_settings->setValue("weekday", Tuesday);
+        setWeekday(Tuesday);
         return;
     }
 
     if (action == m_wedAction) {
-        m_calendarView->setFirstWeekday(Wednesday);
-        m_settings->setValue("weekday", Wednesday);
+        setWeekday(Wednesday);
         return;
     }
 
     if (action == m_thuAction) {
-        m_calendarView->setFirstWeekday(Thursday);
-        m_settings->setValue("weekday", Thursday);
+        setWeekday(Thursday);
         return;
     }
 
     if (action == m_friAction) {
-        m_calendarView->setFirstWeekday(Friday);
-        m_settings->setValue("weekday", Friday);
+        setWeekday(Friday);
         return;
     }
 
     if (action == m_satAction) {
-        m_calendarView->setFirstWeekday(Saturday);
-        m_settings->setValue("weekday", Saturday);
+        setWeekday(Saturday);
         return;
     }
 
     if (action == m_sunAction) {
-        m_calendarView->setFirstWeekday(Sunday);
-        m_settings->setValue("weekday", Sunday);
+        setWeekday(Sunday);
         return;
+    }
+}
+
+void CalendarWindow::setWeekday(int weekday) {
+    m_calendarView->setFirstWeekday(weekday);
+    m_sidebarCalendar->setFirstWeekday(weekday);
+    m_settings->setValue("weekday", weekday);
+}
+
+void CalendarWindow::applyLayout() {
+    const bool dde25 = m_settings->value("layout", QStringLiteral("dde25")).toString() != QStringLiteral("dde15");
+
+    relayoutCalendarView(dde25);
+    m_mainStack->setCurrentIndex(dde25 ? 1 : 0);
+
+    m_viewSwitcher->setVisible(dde25);
+
+    DTitlebar *titlebar = this->titlebar();
+    const int titlebarHeight = titlebar ? titlebar->height() : 0;
+    const int width = dde25 ? SidebarWidth + CalendarWidth
+        : CalendarWidth + ContentLeftRightPadding * 2;
+    const int contentHeight = dde25 ? CalendarHeight
+        : InfoViewHeight + CalendarHeight;
+    setFixedSize(width, contentHeight + titlebarHeight);
+
+    updateLayoutActionText(dde25);
+}
+
+void CalendarWindow::relayoutCalendarView(bool dde25) {
+    if (dde25) {
+        if (m_viewStack->indexOf(m_calendarView) < 0) {
+            m_viewStack->insertWidget(MonthViewIndex, m_calendarView);
+        }
+        m_viewStack->setCurrentIndex(m_viewSwitcher->currentIndex());
+    } else {
+        if (m_dde15Layout->indexOf(m_calendarView) < 0) {
+            m_viewStack->removeWidget(m_calendarView);
+            m_dde15Layout->addWidget(m_calendarView, 0, Qt::AlignHCenter);
+        }
+        m_calendarView->show();
+    }
+}
+
+void CalendarWindow::updateLayoutActionText(bool dde25)
+{
+    if (m_layoutAction) {
+        m_layoutAction->setText(dde25 ? tr("Switch to DDE 15 layout")
+            : tr("Switch to DDE 25 layout"));
     }
 }
 

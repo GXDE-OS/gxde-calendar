@@ -23,7 +23,10 @@ build*/
 # vim tmp file
 *.swp
 
+# VSCode
 .vscode/
+.cache/
 build/
 
+# QtCreator
 CMakeLists.txt.user

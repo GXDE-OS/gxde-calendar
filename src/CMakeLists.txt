@@ -15,6 +15,9 @@ set(SRCS
 ./calendarview.h
 ./constants.h
 ./holidayapi.h
+./sidebarcalendarwidget.h
+./calendarviews.h
+./viewswitcher.h
 ./weekindicator.cpp
 ./spinner.cpp
 ./infoview.cpp
@@ -24,6 +27,9 @@ set(SRCS
 ./dbuscalendar_adaptor.cpp
 ./calendarwindow.cpp
 ./holidayapi.cpp
+./sidebarcalendarwidget.cpp
+./calendarviews.cpp
+./viewswitcher.cpp
 )
 
 set(QRC

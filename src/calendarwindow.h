@@ -29,7 +29,14 @@
 DWIDGET_USE_NAMESPACE
 
 class InfoView;
+class SidebarCalendarWidget;
+class YearView;
+class WeekView;
+class DayView;
+class ViewSwitcher;
 class QPropertyAnimation;
+class QStackedWidget;
+class QVBoxLayout;
 
 class CalendarWindow : public DMainWindow
 {
@@ -58,6 +65,17 @@ private:
     InfoView * m_infoView = nullptr;
     CalendarView * m_calendarView = nullptr;
     QFrame * m_contentBackground = nullptr;
+    SidebarCalendarWidget * m_sidebarCalendar = nullptr;
+
+    // DDE 25 styled
+    QStackedWidget *m_mainStack = nullptr;
+    QWidget *m_dde25Page = nullptr;
+    QStackedWidget *m_viewStack = nullptr;
+    YearView *m_yearView = nullptr;
+    WeekView *m_weekView = nullptr;
+    DayView *m_dayView = nullptr;
+    ViewSwitcher *m_viewSwitcher = nullptr;
+    QVBoxLayout *m_dde15Layout = nullptr;
 
     QFrame * m_animationContainer = nullptr;
     QLabel * m_fakeContent = nullptr;
@@ -76,6 +94,12 @@ private:
     void updateSentense() const;
     void updateDate() const;
 
+    // Style changer
+    void applyLayout();
+    void relayoutCalendarView(bool dde25);
+    void updateLayoutActionText(bool dde25);
+    void setWeekday(int weekday);
+
     QAction *m_monAction;
     QAction *m_tueAction;
     QAction *m_wedAction;
@@ -83,6 +107,7 @@ private:
     QAction *m_friAction;
     QAction *m_satAction;
     QAction *m_sunAction;
+    QAction *m_layoutAction;
 
     QSettings *m_settings;
     QSettings *m_dateSettings;
