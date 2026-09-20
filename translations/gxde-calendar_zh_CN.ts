@@ -51,4 +51,11 @@
         <translation>返回今天</translation>
     </message>
 </context>
+<context>
+    <name>YearView</name>
+    <message>
+        <source>Today</source>
+        <translation>今天</translation>
+    </message>
+</context>
 </TS>

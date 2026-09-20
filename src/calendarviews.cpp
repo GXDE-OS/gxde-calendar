@@ -20,6 +20,12 @@
 #include <QPainter>
 #include <QLocale>
 #include <QMouseEvent>
+#include <QLabel>
+#include <QPushButton>
+#include <QFrame>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QStyle>
 
 namespace {
 const QColor AccentColor("#2ca7f8");
@@ -27,11 +33,91 @@ const QColor WeekendColor("#ff5b38");
 const QColor DefaultColor("#000000");
 const QColor MutedColor("#b2b2b2");
 const int MonthHeaderHeight = 22;
+const int YearToolbarHeight = 66;
 }
 
 YearView::YearView(QWidget *parent) : QWidget(parent) {
     m_currentDate = QDate::currentDate();
     setCursor(Qt::PointingHandCursor);
+
+    QWidget *toolbar = new QWidget(this);
+    toolbar->setFixedHeight(YearToolbarHeight);
+    QHBoxLayout *toolbarLayout = new QHBoxLayout(toolbar);
+    toolbarLayout->setContentsMargins(10, 0, 10, 0);
+    toolbarLayout->setSpacing(0);
+
+    m_yearLabel = new QLabel(toolbar);
+    QFont yearFont;
+    yearFont.setWeight(QFont::Medium);
+    yearFont.setPixelSize(24);
+    m_yearLabel->setFont(yearFont);
+    m_yearLabel->setStyleSheet("color: rgba(0, 0, 0, 0.8);");
+
+    m_todayFrame = new QFrame(toolbar);
+    m_todayFrame->setObjectName("YearTodayFrame");
+    m_todayFrame->setStyleSheet(
+        "QFrame#YearTodayFrame {"
+        "  background-color: white;"
+        "  border: 1px solid rgba(0, 0, 0, 0.1);"
+        "  border-radius: 4px;"
+        "}"
+        "QFrame#YearTodayFrame QPushButton {"
+        "  background-color: transparent;"
+        "  border: none;"
+        "  color: #000000;"
+        "  border-radius: 3px;"
+        "}"
+        "QFrame#YearTodayFrame QPushButton:hover {"
+        "  background-color: rgba(0, 0, 0, 0.05);"
+        "}");
+    m_todayFrame->setFixedHeight(36);
+
+    QHBoxLayout *todayLayout = new QHBoxLayout(m_todayFrame);
+    todayLayout->setContentsMargins(0, 0, 0, 0);
+    todayLayout->setSpacing(0);
+
+    m_prevButton = new QPushButton(m_todayFrame);
+    m_prevButton->setIcon(style()->standardIcon(QStyle::SP_ArrowLeft));
+    m_prevButton->setIconSize(QSize(16, 16));
+    m_prevButton->setFixedSize(36, 36);
+    m_prevButton->setFocusPolicy(Qt::NoFocus);
+    m_prevButton->setCursor(Qt::PointingHandCursor);
+
+    m_todayButton = new QPushButton(tr("Today"), m_todayFrame);
+    m_todayButton->setFixedSize(88, 36);
+    m_todayButton->setFocusPolicy(Qt::NoFocus);
+    m_todayButton->setCursor(Qt::PointingHandCursor);
+
+    m_nextButton = new QPushButton(m_todayFrame);
+    m_nextButton->setIcon(style()->standardIcon(QStyle::SP_ArrowRight));
+    m_nextButton->setIconSize(QSize(16, 16));
+    m_nextButton->setFixedSize(36, 36);
+    m_nextButton->setFocusPolicy(Qt::NoFocus);
+    m_nextButton->setCursor(Qt::PointingHandCursor);
+
+    todayLayout->addWidget(m_prevButton);
+    todayLayout->addWidget(m_todayButton);
+    todayLayout->addWidget(m_nextButton);
+
+    toolbarLayout->addWidget(m_yearLabel);
+    toolbarLayout->addStretch();
+    toolbarLayout->addWidget(m_todayFrame);
+
+    QVBoxLayout *mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->setSpacing(0);
+    mainLayout->addWidget(toolbar);
+    mainLayout->addStretch();
+
+    connect(m_prevButton, &QPushButton::clicked, this, [this] { switchYear(-1); });
+    connect(m_nextButton, &QPushButton::clicked, this, [this] { switchYear(1); });
+    connect(m_todayButton, &QPushButton::clicked, this, [this] {
+        m_currentDate = QDate::currentDate();
+        updateYearLabel();
+        update();
+    });
+
+    updateYearLabel();
 }
 
 void YearView::setCurrentDate(const QDate &date) {
@@ -40,6 +126,7 @@ void YearView::setCurrentDate(const QDate &date) {
     }
 
     m_currentDate = date;
+    updateYearLabel();
     update();
 }
 
@@ -48,6 +135,18 @@ void YearView::setFirstWeekday(int weekday) {
         return;
     m_firstWeekDay = weekday;
     update();
+}
+
+void YearView::switchYear(int offset) {
+    m_currentDate = m_currentDate.addYears(offset);
+    updateYearLabel();
+    update();
+}
+
+void YearView::updateYearLabel() {
+    if (m_yearLabel) {
+        m_yearLabel->setText(QString::number(m_currentDate.year()));
+    }
 }
 
 int YearView::firstWeekdayOffset(const QDate &firstDay) const {
@@ -59,11 +158,13 @@ QRect YearView::monthRect(int monthIndex) const {
     const int cols = 3;
     const int rows = 4;
     const int margin = 8;
+    const int gridTop = YearToolbarHeight;
+    const int gridHeight = height() - YearToolbarHeight;
     const int col = monthIndex % cols;
     const int row = monthIndex / cols;
     const int cellW = (width() - margin * 2) / cols;
-    const int cellH = (height() - margin * 2) / rows;
-    return QRect(margin + col * cellW, margin + row * cellH, cellW, cellH);
+    const int cellH = (gridHeight - margin * 2) / rows;
+    return QRect(margin + col * cellW, gridTop + margin + row * cellH, cellW, cellH);
 }
 
 void YearView::paintEvent(QPaintEvent *event) {
@@ -140,11 +241,13 @@ void YearView::paintEvent(QPaintEvent *event) {
 void YearView::mousePressEvent(QMouseEvent *event) {
     const int cols = 3;
     const int margin = 8;
+    const int gridTop = YearToolbarHeight;
+    const int gridHeight = height() - YearToolbarHeight;
     const int cellW = (width() - margin * 2) / cols;
-    const int cellH = (height() - margin * 2) / 4;
+    const int cellH = (gridHeight - margin * 2) / 4;
 
     const int col = (event->position().x() - margin) / cellW;
-    const int row = (event->position().y() - margin) / cellH;
+    const int row = (event->position().y() - gridTop - margin) / cellH;
     if (col < 0 || col >= cols || row < 0 || row >= 4) {
         return;
     }
@@ -152,13 +255,13 @@ void YearView::mousePressEvent(QMouseEvent *event) {
     const int month = row * cols + col + 1;
     const QRect area = monthRect(month - 1);
 
-    const int gridTop = area.y() + MonthHeaderHeight;
-    const int gridHeight = area.height() - MonthHeaderHeight;
+    const int monthGridTop = area.y() + MonthHeaderHeight;
+    const int monthGridHeight = area.height() - MonthHeaderHeight;
     const int dayCellW = area.width() / 7;
-    const int dayCellH = gridHeight / 6;
+    const int dayCellH = monthGridHeight / 6;
 
     const int dayCol = (event->position().x() - area.x()) / dayCellW;
-    const int dayRow = (event->position().y() - gridTop) / dayCellH;
+    const int dayRow = (event->position().y() - monthGridTop) / dayCellH;
     if (dayCol < 0 || dayCol >= 7 || dayRow < 0 || dayRow >= 6) {
         return;
     }

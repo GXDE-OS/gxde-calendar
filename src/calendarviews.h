@@ -21,6 +21,10 @@
 #include <QWidget>
 #include <QDate>
 
+class QLabel;
+class QPushButton;
+class QFrame;
+
 class YearView : public QWidget {
     Q_OBJECT
 public:
@@ -39,9 +43,17 @@ protected:
 private:
     QRect monthRect(int monthIndex) const;
     int firstWeekdayOffset(const QDate &firstDay) const;
+    void switchYear(int offset);
+    void updateYearLabel();
 
     QDate m_currentDate;
     int m_firstWeekDay = 0;
+
+    QLabel *m_yearLabel = nullptr;
+    QPushButton *m_prevButton = nullptr;
+    QPushButton *m_nextButton = nullptr;
+    QPushButton *m_todayButton = nullptr;
+    QFrame *m_todayFrame = nullptr;
 };
 
 
