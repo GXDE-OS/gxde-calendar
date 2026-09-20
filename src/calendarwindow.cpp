@@ -164,6 +164,13 @@ void CalendarWindow::initUI()
     m_sidebarCalendar->setFixedSize(SidebarWidth, CalendarHeight);
     m_sidebarCalendar->setFirstWeekday(weekday);
     m_sidebarCalendar->setDate(QDate::currentDate());
+    m_sidebarCalendar->setObjectName("SidebarCalendarWidget");
+    m_sidebarCalendar->setAttribute(Qt::WA_StyledBackground, true);
+    m_sidebarCalendar->setStyleSheet(
+        "QWidget#SidebarCalendarWidget {"
+        "  background-color: #67f9f9fa;"
+        "  border: none;"
+        "}");
 
     m_animationContainer = new QFrame(m_contentBackground);
     m_animationContainer->setStyleSheet("QFrame { background: rgba(0, 0, 0, 0) }");
@@ -189,6 +196,40 @@ void CalendarWindow::initUI()
     m_viewSwitcher->setLabels(QStringList() << tr("Y") << tr("M") << tr("W")
         << tr("D"));
     m_viewSwitcher->setFixedSize(ViewSwitcherWidth, ViewSwitcherHeight);
+
+    // 侧边栏折叠按钮，样式对齐 gxde-file-manager 标题栏按钮
+    // （白底 + 1px rgba 边框 + 4px 圆角 + 蓝色渐变 hover）
+    m_sidebarToggleButton = new QPushButton;
+    m_sidebarToggleButton->setObjectName("SidebarToggleButton");
+    // 图标用 QIcon::Normal/Active 双态：常态深色、hover 时自动切白色，
+    // 尺寸由 setIconSize 精确控制为 16x16（高 DPI 下由 SVG 引擎清晰渲染）。
+    QIcon sidebarIcon;
+    sidebarIcon.addFile(":/resources/icon/sidebar.svg", QSize(16, 16), QIcon::Normal);
+    sidebarIcon.addFile(":/resources/icon/sidebar_dark.svg", QSize(16, 16), QIcon::Active);
+    m_sidebarToggleButton->setIcon(sidebarIcon);
+    m_sidebarToggleButton->setIconSize(QSize(16, 16));
+    m_sidebarToggleButton->setFixedSize(24, 24);
+    m_sidebarToggleButton->setFocusPolicy(Qt::NoFocus);
+    m_sidebarToggleButton->setCursor(Qt::PointingHandCursor);
+    m_sidebarToggleButton->setStyleSheet(
+        "QPushButton#SidebarToggleButton {"
+        "  background-color: white;"
+        "  border: 1px solid rgba(0, 0, 0, 0.1);"
+        "  border-radius: 4px;"
+        "}"
+        "QPushButton#SidebarToggleButton:hover {"
+        "  background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
+        "    stop:0 #8CCFFF, stop:1 #4BB8FF);"
+        "  border: 1px solid #3caafd;"
+        "}"
+        "QPushButton#SidebarToggleButton:pressed {"
+        "  background-color: #2ca7f8;"
+        "  border: 1px solid #1088ff;"
+        "}");
+    connect(m_sidebarToggleButton, &QPushButton::clicked, this, [this](bool) {
+        setSidebarCollapsed(!m_sidebarCollapsed);
+    });
+    m_sidebarCollapsed = m_settings->value("sidebarCollapsed", false).toBool();
 
     m_viewStack = new QStackedWidget;
 
@@ -332,7 +373,19 @@ void CalendarWindow::setupMenu()
         titlebar->menu()->addSeparator();
         m_layoutAction = titlebar->menu()->addAction(tr("Switch to DDE 25 layout"));
 
-        titlebar->setCustomWidget(m_viewSwitcher, false);
+        // 标题栏自定义区域：左侧只有侧边栏折叠按钮，Y/M/W/D 紧随其后
+        // 左边距 = DTitlebar 主布局的 6px + 这里的 12px，与 gxde-file-manager
+        // 标题栏 logo 的位置一致（dfilemanagerwindow.cpp:970-973）
+        QWidget *titleCenter = new QWidget;
+        QHBoxLayout *titleCenterLayout = new QHBoxLayout(titleCenter);
+        titleCenterLayout->setContentsMargins(0, 0, 0, 0);
+        titleCenterLayout->setSpacing(0);
+        titleCenterLayout->addSpacing(12);
+        titleCenterLayout->addWidget(m_sidebarToggleButton, 0, Qt::AlignVCenter);
+        titleCenterLayout->addSpacing(12);
+        titleCenterLayout->addWidget(m_viewSwitcher, 0, Qt::AlignVCenter);
+        titleCenterLayout->addStretch();
+        titlebar->setCustomWidget(titleCenter, false);
 
         connect(titlebar->menu(), &QMenu::triggered, this, &CalendarWindow::menuItemInvoked);
     }
@@ -391,6 +444,16 @@ void CalendarWindow::setWeekday(int weekday) {
     m_settings->setValue("weekday", weekday);
 }
 
+void CalendarWindow::setSidebarCollapsed(bool collapsed) {
+    if (m_sidebarCollapsed == collapsed) {
+        return;
+    }
+
+    m_sidebarCollapsed = collapsed;
+    m_settings->setValue("sidebarCollapsed", collapsed);
+    applyLayout();
+}
+
 void CalendarWindow::applyLayout() {
     const bool dde25 = m_settings->value("layout", QStringLiteral("dde25")).toString() != QStringLiteral("dde15");
 
@@ -398,10 +461,15 @@ void CalendarWindow::applyLayout() {
     m_mainStack->setCurrentIndex(dde25 ? 1 : 0);
 
     m_viewSwitcher->setVisible(dde25);
+    m_sidebarToggleButton->setVisible(dde25);
+    m_sidebarCalendar->setVisible(dde25 && !m_sidebarCollapsed);
 
     DTitlebar *titlebar = this->titlebar();
     const int titlebarHeight = titlebar ? titlebar->height() : 0;
-    const int width = dde25 ? SidebarWidth + CalendarWidth
+    // 窗口宽度不随侧边栏折叠变化：折叠时 dde25Layout 会把空出来的
+    // SidebarWidth 分给两侧，靠 m_viewStack 的 AlignHCenter 重新居中。
+    const int width = dde25
+        ? SidebarWidth + CalendarWidth
         : CalendarWidth + ContentLeftRightPadding * 2;
     const int contentHeight = dde25 ? CalendarHeight
         : InfoViewHeight + CalendarHeight;

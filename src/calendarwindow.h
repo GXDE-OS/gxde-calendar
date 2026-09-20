@@ -22,6 +22,7 @@
 
 #include <DMainWindow>
 #include <QLabel>
+#include <QPushButton>
 #include <QSettings>
 
 #include "calendarview.h"
@@ -75,6 +76,8 @@ private:
     WeekView *m_weekView = nullptr;
     DayView *m_dayView = nullptr;
     ViewSwitcher *m_viewSwitcher = nullptr;
+    QPushButton *m_sidebarToggleButton = nullptr;
+    bool m_sidebarCollapsed = false;
     QVBoxLayout *m_dde15Layout = nullptr;
 
     QFrame * m_animationContainer = nullptr;
@@ -99,6 +102,7 @@ private:
     void relayoutCalendarView(bool dde25);
     void updateLayoutActionText(bool dde25);
     void setWeekday(int weekday);
+    void setSidebarCollapsed(bool collapsed);
 
     QAction *m_monAction;
     QAction *m_tueAction;
