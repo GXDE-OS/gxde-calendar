@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    从 dde-calendar 的 previous_normal.svg 抠出来的「上一页」箭头。
+    原图 viewBox 是 23x23，箭头只占中间 3.5x7.1，直接按 16x16 图标尺寸渲染会小到看不清，
+    所以这里用同样的 45 度圆头折线重画了一遍，压到贴边的 16x16：
+    折线本身 5x10、描边 1.5，含描边的外接盒 6.5x11.5，正好居中在 16x16 里。
+    浅色主题用 #303030，深色主题见 previous_nav_dark.svg。
+-->
+<svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <polyline points="10.5 3 5.5 8 10.5 13" fill="none" stroke="#303030" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

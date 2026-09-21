@@ -28,6 +28,7 @@
 #include <QColor>
 #include <QDate>
 #include <QHash>
+#include <QIcon>
 #include <QSet>
 #include <QString>
 #include <QVector>
@@ -42,6 +43,12 @@ int themeType();
 // 系统高亮色。dde-calendar 取的是 DGuiApplicationHelper 的 highlight() 颜色，
 // 这里用 Qt 自身的 highlight 色，避免额外依赖。
 QColor systemActiveColor();
+
+// 翻页箭头（日视图迷你月历、周视图周数条上的 < >）。
+// dde-calendar 用 DIconButton(DStyle::SP_ArrowLeft)，DTK 画出来是一根 3px 粗的实心箭头，
+// 移植到 Qt6 后换成从 dde-calendar 那套 previous_/next_ 箭头抠出来的细描边版本。
+// type 为 setTheMe 的主题类型：2 用白色描边，其余用深灰。
+QIcon navArrowIcon(bool next, int type);
 
 // gxde-calendar 的 Week 枚举（Monday = 6 … Sunday = 0）转成 Qt::DayOfWeek。
 Qt::DayOfWeek fromGxdeWeekday(int weekday);

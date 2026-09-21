@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    从 dde-calendar 的 next_normal.svg 抠出来的「下一页」箭头，是 previous_nav.svg 的左右镜像。
+    原图箭头同样只占 23x23 viewBox 的中间一小块，这里按 16x16 重画并压边。
+    浅色主题用 #303030，深色主题见 next_nav_dark.svg。
+-->
+<svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <polyline points="5.5 3 10.5 8 5.5 13" fill="none" stroke="#303030" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

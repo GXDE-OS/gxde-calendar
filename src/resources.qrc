@@ -8,10 +8,14 @@
         <file>resources/icon/gxde-calendar_48.png</file>
         <file>resources/icon/next_disabled.svg</file>
         <file>resources/icon/next_hover.svg</file>
+        <file>resources/icon/next_nav.svg</file>
+        <file>resources/icon/next_nav_dark.svg</file>
         <file>resources/icon/next_normal.svg</file>
         <file>resources/icon/next_press.svg</file>
         <file>resources/icon/previous_disabled.svg</file>
         <file>resources/icon/previous_hover.svg</file>
+        <file>resources/icon/previous_nav.svg</file>
+        <file>resources/icon/previous_nav_dark.svg</file>
         <file>resources/icon/previous_normal.svg</file>
         <file>resources/icon/previous_press.svg</file>
         <file>resources/icon/sidebar.svg</file>

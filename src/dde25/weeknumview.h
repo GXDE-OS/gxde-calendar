@@ -36,6 +36,7 @@
 #include "constants.h"
 
 class QHBoxLayout;
+class QToolButton;
 
 /**
  * @brief The CWeekNumWidget class
@@ -118,8 +119,9 @@ protected:
     void wheelEvent(QWheelEvent *event) override;
 
 private:
-    QWidget *m_prevButton = nullptr;
-    QWidget *m_nextButton = nullptr;
+    int m_themetype = 0;
+    QToolButton *m_prevButton = nullptr;
+    QToolButton *m_nextButton = nullptr;
     CWeekNumWidget *m_weekNumWidget = nullptr;
 };
 

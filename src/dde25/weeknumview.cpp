@@ -304,7 +304,8 @@ CWeekView::CWeekView(QWidget *parent)
     prevButton->setObjectName("WeekPrevButton");
     prevButton->setAccessibleName("WeekPrevButton");
     prevButton->setAutoRaise(true);
-    prevButton->setArrowType(Qt::LeftArrow);
+    prevButton->setIcon(DDE25::navArrowIcon(false, m_themetype));
+    prevButton->setIconSize(QSize(16, 16));
     prevButton->setFixedSize(36, 36);
     connect(prevButton, &QToolButton::clicked, this, &CWeekView::signalBtnPrev);
     m_prevButton = prevButton;
@@ -316,7 +317,8 @@ CWeekView::CWeekView(QWidget *parent)
     nextButton->setObjectName("WeekNextButton");
     nextButton->setAccessibleName("WeekNextButton");
     nextButton->setAutoRaise(true);
-    nextButton->setArrowType(Qt::RightArrow);
+    nextButton->setIcon(DDE25::navArrowIcon(true, m_themetype));
+    nextButton->setIconSize(QSize(16, 16));
     nextButton->setFixedSize(36, 36);
     connect(nextButton, &QToolButton::clicked, this, &CWeekView::signalBtnNext);
     m_nextButton = nextButton;
@@ -350,6 +352,9 @@ void CWeekView::setFirstWeekDay(Qt::DayOfWeek firstDay)
 
 void CWeekView::setTheMe(int type)
 {
+    m_themetype = type;
+    m_prevButton->setIcon(DDE25::navArrowIcon(false, type));
+    m_nextButton->setIcon(DDE25::navArrowIcon(true, type));
     m_weekNumWidget->setTheMe(type);
 }
 

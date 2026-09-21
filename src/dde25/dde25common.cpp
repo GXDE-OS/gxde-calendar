@@ -42,6 +42,12 @@ QColor systemActiveColor()
     return qApp->palette().color(QPalette::Highlight);
 }
 
+QIcon navArrowIcon(bool next, int type) {
+    return QIcon(QString(":/resources/icon/%1_nav%2.svg")
+        .arg(next ? QStringLiteral("next") : QStringLiteral("previous"),
+            type == 2 ? QStringLiteral("_dark") : QString()));
+}
+
 Qt::DayOfWeek fromGxdeWeekday(int weekday)
 {
     // gxde-calendar: Monday = 6 … Sunday = 0

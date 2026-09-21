@@ -22,7 +22,9 @@
  * 移植自 dde-calendar（src/calendar-client/src/widget/dayWidget/daymonthview.*）。
  * 差异：
  *   1. DIconButton/CTodayButton/DHorizontalLine 换成 QToolButton/QPushButton/QFrame
- *      （本项目未引入 DtkWidget 头文件路径）。
+ *      （本项目未引入 DtkWidget 头文件路径）。翻页箭头原本是 DIconButton 自带的
+ *      DStyle::SP_ArrowLeft/Right，换成从 dde-calendar 那套 previous_/next_ 箭头抠出来的
+ *      DDE25::navArrowIcon()（DTK 画的是 3px 实心箭头，太粗）。
  *   2. 黄历信息改用 gxde 农历服务已有的 CaLunarDayInfo；该服务不提供「宜/忌」数据，
  *      因此原实现的 m_yiLabel/m_jiLabel 及其下方的宜/忌区域整体不移植
  *      （dayhuangliview.* 与两个宜/忌图标也未引入）。
@@ -95,6 +97,7 @@ private:
     void updateDateLunarDay();
     void changeSelectDate(const QDate &date);
 
+    int m_themetype = 0;
     QToolButton *m_prevButton = nullptr;
     QToolButton *m_nextButton = nullptr;
     QPushButton *m_today = nullptr;

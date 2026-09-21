@@ -84,6 +84,9 @@ void CDayMonthView::setFirstWeekDay(Qt::DayOfWeek firstDay)
 void CDayMonthView::setTheMe(int type)
 {
     const QColor todayColor = DDE25::systemActiveColor();
+    m_themetype = type;
+    m_prevButton->setIcon(DDE25::navArrowIcon(false, type));
+    m_nextButton->setIcon(DDE25::navArrowIcon(true, type));
     m_dayMonthWidget->setTheMe(type);
     if (type == 0 || type == 1) {
         QPalette aniPa = palette();
@@ -151,14 +154,16 @@ void CDayMonthView::initUI()
     m_prevButton->setObjectName("DayMonthPrevButton");
     m_prevButton->setAccessibleName("DayMonthPrevButton");
     m_prevButton->setAutoRaise(true);
-    m_prevButton->setArrowType(Qt::LeftArrow);
+    m_prevButton->setIcon(DDE25::navArrowIcon(false, m_themetype));
+    m_prevButton->setIconSize(QSize(16, 16));
     m_prevButton->setFixedSize(36, 36);
 
     m_nextButton = new QToolButton(this);
     m_nextButton->setObjectName("DayMonthNextButton");
     m_nextButton->setAccessibleName("DayMonthNextButton");
     m_nextButton->setAutoRaise(true);
-    m_nextButton->setArrowType(Qt::RightArrow);
+    m_nextButton->setIcon(DDE25::navArrowIcon(true, m_themetype));
+    m_nextButton->setIconSize(QSize(16, 16));
     m_nextButton->setFixedSize(36, 36);
 
     QHBoxLayout *titleLayout = new QHBoxLayout;
