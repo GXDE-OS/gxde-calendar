@@ -1,0 +1,351 @@
+/*
+ * Copyright (C) 2026 CharOfString <root@charofstring.cc>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * ----------------------------------------------------------------------------
+ * Origin copyright bearer: 2015 - 2026 UnionTech Software Technology Co., Ltd.
+ * This file is ported from DDE calendar tag 6.6.0
+ * Minimal modification is applied to make the class build against
+ * DTK2Widget-Qt6.
+ * ----------------------------------------------------------------------------
+ * 移植自 dde-calendar（src/calendar-client/src/widget/weekWidget/weekheadview.*）。
+ */
+
+#include "weekheadview.h"
+
+#include "constants.h"
+#include "customframe.h"
+#include "dde25common.h"
+
+#include <QHBoxLayout>
+#include <QLocale>
+#include <QMouseEvent>
+#include <QPainter>
+#include <QPainterPath>
+#include <QWheelEvent>
+
+CWeekHeadView::CWeekHeadView(QWidget *parent)
+    : QWidget(parent)
+{
+    setContentsMargins(0, 0, 0, 0);
+
+    m_dayNumFont.setWeight(QFont::Medium);
+    m_dayNumFont.setPixelSize(DDECalendar::FontSizeSixteen);
+    m_monthFont.setWeight(QFont::Medium);
+    m_monthFont.setPixelSize(DDECalendar::FontSizeTwenty);
+
+    // cells grid
+    QHBoxLayout *hBoxLayout = new QHBoxLayout;
+    hBoxLayout->setContentsMargins(0, 0, 0, 0);
+    hBoxLayout->setSpacing(0);
+
+    m_monthLabel = new CustomFrame(this);
+    m_monthLabel->setFixedWidth(DDEWeekCalendar::WMCellHeaderWidth - 5);
+    m_monthLabel->setRoundState(true, false, false, false);
+    QFont mlabelF;
+    mlabelF.setWeight(QFont::Medium);
+    mlabelF.setPixelSize(DDECalendar::FontSizeTwenty);
+    m_monthLabel->setTextFont(mlabelF);
+    hBoxLayout->addWidget(m_monthLabel);
+    hBoxLayout->setStretch(0, 0);
+    hBoxLayout->setSpacing(0);
+
+    for (int c = 0; c != DDEWeekCalendar::AFewDaysofWeek; ++c) {
+        QWidget *cell = new QWidget(this);
+        cell->installEventFilter(this);
+        cell->setFocusPolicy(Qt::ClickFocus);
+        hBoxLayout->addWidget(cell);
+        m_cellList.append(cell);
+    }
+
+    setLayout(hBoxLayout);
+
+    setTheMe(DDE25::themeType());
+}
+
+CWeekHeadView::~CWeekHeadView() = default;
+
+void CWeekHeadView::setTheMe(int type)
+{
+    m_themetype = type;
+
+    if (type == 0 || type == 1) {
+        const QColor textC = "#000000";
+        const QColor textBC(230, 238, 242);
+
+        m_monthLabel->setBColor(textBC);
+        m_monthLabel->setTextColor(textC);
+
+        m_backgroundCircleColor = "#0081FF";
+        m_backgroundShowColor = "#2CA7F8";
+        m_backgroundShowColor.setAlphaF(0.4);
+        m_Background_Weekend_Color = "#DAE4ED";
+
+        m_defaultTextColor = "#000000";
+        m_defaultTextColor.setAlphaF(0.7);
+        m_currentDayTextColor = "#FFFFFF";
+        m_defaultLunarColor = "#898989";
+        m_currentMonthColor = "#000000";
+        m_backgroundColor = "#E6EEF2";
+        m_dividingLineColor = QColor(0, 0, 0, 26);
+        m_solofestivalLunarColor = "#4DFF7272";
+    } else if (type == 2) {
+        QColor textBC = "#82AEC1";
+        textBC.setAlphaF(0.1);
+        m_monthLabel->setBColor(textBC);
+        m_monthLabel->setTextColor("#BF1D63");
+        m_backgroundCircleColor = "#0059D2";
+        m_backgroundShowColor = "#002AAF";
+        m_backgroundShowColor.setAlphaF(0.4);
+        m_Background_Weekend_Color = "#333D4A";
+
+        m_defaultTextColor = "#FFFFFF";
+        m_defaultTextColor.setAlphaF(0.7);
+        m_currentDayTextColor = "#C0C6D4";
+        m_defaultLunarColor = "#6886BA";
+
+        m_currentMonthColor = "#000000";
+        m_backgroundColor = "#82AEC1";
+        m_backgroundColor.setAlphaF(0.1);
+        m_dividingLineColor = QColor(255, 255, 255, 20);
+        m_solofestivalLunarColor = "#4DFF7272";
+    }
+    m_weekendsTextColor = DDE25::systemActiveColor();
+    update();
+}
+
+void CWeekHeadView::setWeekDay(QVector<QDate> vDays, const QDate &selectDate)
+{
+    if (vDays.size() != DDEWeekCalendar::AFewDaysofWeek) {
+        return;
+    }
+    m_days = vDays;
+    QLocale locale;
+    m_monthLabel->setTextStr(locale.monthName(selectDate.month(), QLocale::ShortFormat));
+    update();
+}
+
+void CWeekHeadView::setLunarVisible(bool visible)
+{
+    int state = int(m_showState);
+
+    if (visible) {
+        state |= ShowLunar;
+    } else {
+        state &= ~ShowLunar;
+    }
+
+    m_showState = ShowState(state);
+    update();
+}
+
+void CWeekHeadView::updateLunar()
+{
+    update();
+}
+
+bool CWeekHeadView::eventFilter(QObject *o, QEvent *e)
+{
+    QWidget *cell = qobject_cast<QWidget *>(o);
+
+    if (cell && m_cellList.contains(cell)) {
+        if (e->type() == QEvent::Paint) {
+            paintCell(cell);
+        } else if (e->type() == QEvent::MouseButtonDblClick) {
+            const int pos = m_cellList.indexOf(cell);
+            if (pos >= 0 && pos < m_days.size()) {
+                emit signalsViewSelectDate(m_days[pos]);
+            }
+        }
+    }
+    return false;
+}
+
+QString CWeekHeadView::getCellDayNum(int pos)
+{
+    return QString::number(m_days[pos].day());
+}
+
+QDate CWeekHeadView::getCellDate(int pos)
+{
+    return m_days[pos];
+}
+
+QString CWeekHeadView::getLunar(int pos)
+{
+    if (pos < 0 || pos >= m_days.size()) {
+        return QString();
+    }
+    return DDE25::LunarCache::instance()->lunarText(m_days[pos]);
+}
+
+void CWeekHeadView::paintCell(QWidget *cell)
+{
+    const int pos = m_cellList.indexOf(cell);
+    if (pos < 0 || pos >= m_days.size() || !m_days[pos].isValid()) {
+        return;
+    }
+
+    m_weekendsTextColor = DDE25::systemActiveColor();
+    const QRect rect(0, 0, cell->width(), cell->height());
+    const bool isCurrentDay = getCellDate(pos) == QDate::currentDate();
+    const bool isSelectedCell = isCurrentDay;
+    const int d = m_days[pos].dayOfWeek();
+
+    QPainter painter(cell);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(Qt::NoPen);
+    // 根据周几设置不一样的背景色
+    if (d == DDEWeekCalendar::FirstDayOfWeekend || d == DDEWeekCalendar::AFewDaysofWeek) {
+        painter.setBrush(QBrush(m_Background_Weekend_Color));
+    } else {
+        painter.setBrush(QBrush(m_backgroundColor));
+    }
+    if (m_cellList.last() != cell) {
+        painter.drawRect(rect); // 画矩形
+        // 绘制分割线
+        const QPoint point_begin(cell->width(), 0);
+        const QPoint point_end(cell->width(), cell->height());
+        painter.save();
+        painter.setPen(m_dividingLineColor);
+        painter.drawLine(point_begin, point_end);
+        painter.restore();
+    } else {
+        const int labelwidth = cell->width();
+        const int labelheight = cell->height();
+        QPainterPath painterPath;
+        painterPath.moveTo(0, 0);
+        painterPath.lineTo(0, labelheight);
+        painterPath.lineTo(labelwidth, labelheight);
+        painterPath.lineTo(labelwidth, labelheight - m_radius);
+        painterPath.arcTo(QRect(labelwidth - m_radius * 2, 0, m_radius * 2, m_radius * 2), 0, 90);
+        painterPath.lineTo(0, 0);
+        painterPath.closeSubpath();
+        painter.drawPath(painterPath);
+    }
+
+    int bw = (cell->width() - 104) / 2;
+    int bh = (cell->height() - 26) / 2;
+
+    if (bw < 0) {
+        bw = 2;
+    }
+    if (bh < 0) {
+        bh = 2;
+    }
+    if (isSelectedCell) {
+        if (m_showState & ShowLunar) {
+            const QRect fillRect(bw - 2, bh, 26, 26);
+            painter.save();
+            painter.setRenderHint(QPainter::Antialiasing);
+            painter.setBrush(QBrush(DDE25::systemActiveColor()));
+            painter.setPen(Qt::NoPen);
+            painter.drawEllipse(fillRect);
+            painter.restore();
+        } else {
+            const QRect fillRect(cell->width() - (cell->width() / 2) + 1, bh - 1, 26, 26);
+            painter.save();
+            painter.setRenderHint(QPainter::Antialiasing);
+            painter.setBrush(QBrush(DDE25::systemActiveColor()));
+            painter.setPen(Qt::NoPen);
+            painter.drawEllipse(fillRect);
+            painter.restore();
+        }
+    }
+
+    QLocale locale;
+    const QString dayNum = getCellDayNum(pos);
+    const QString dayLunar = getLunar(pos);
+    QString dayWeek = locale.dayName(d ? d : DDEWeekCalendar::AFewDaysofWeek, QLocale::ShortFormat);
+    QColor primaryTextColor = m_themetype == 2 ? QColor(Qt::white) : QColor(Qt::black);
+    primaryTextColor.setAlphaF(0.8);
+    QColor lunarTextColor = m_themetype == 2 ? QColor(Qt::white) : QColor(Qt::black);
+    lunarTextColor.setAlphaF(0.5);
+    QFont lunarFont = m_dayNumFont;
+    lunarFont.setWeight(QFont::Normal);
+
+    painter.save();
+    painter.setPen(Qt::SolidLine);
+    if (isSelectedCell) {
+        painter.setPen(m_currentDayTextColor);
+    } else if (d == DDEWeekCalendar::FirstDayOfWeekend || d == DDEWeekCalendar::AFewDaysofWeek) {
+        painter.setPen(m_weekendsTextColor);
+    } else {
+        painter.setPen(primaryTextColor);
+    }
+    painter.setFont(m_dayNumFont);
+
+    if (m_showState & ShowLunar) {
+        painter.drawText(QRect(bw - 1, bh, 24, 24), Qt::AlignCenter, dayNum);
+        if (d == DDEWeekCalendar::FirstDayOfWeekend || d == DDEWeekCalendar::AFewDaysofWeek) {
+            painter.setPen(m_weekendsTextColor);
+        } else {
+            painter.setPen(primaryTextColor);
+        }
+        painter.drawText(QRect(bw + 24, bh, 30, 25), Qt::AlignCenter, dayWeek);
+    } else {
+        painter.drawText(QRect(cell->width() - (cell->width() / 2) - 4, bh - 1, 36, 26),
+                         Qt::AlignCenter, dayNum);
+        if (d == DDEWeekCalendar::FirstDayOfWeekend || d == DDEWeekCalendar::AFewDaysofWeek) {
+            painter.setPen(m_weekendsTextColor);
+        } else {
+            painter.setPen(primaryTextColor);
+        }
+
+        QFontMetrics fm = painter.fontMetrics();
+        while (fm.horizontalAdvance(dayWeek) > cell->width() / 2) {
+            dayWeek.chop(1);
+        }
+        // 水平右对齐，上下居中
+        painter.drawText(QRect(0, bh, (cell->width() / 2), 26), Qt::AlignRight | Qt::AlignVCenter, dayWeek);
+    }
+
+    // 绘制农历
+    if (m_showState & ShowLunar) {
+        if (cell->width() > 100) {
+            if (d == DDEWeekCalendar::FirstDayOfWeekend || d == DDEWeekCalendar::AFewDaysofWeek) {
+                painter.setPen(m_weekendsTextColor);
+            } else {
+                painter.setPen(lunarTextColor);
+            }
+            painter.setFont(lunarFont);
+
+            if (cell->width() < 132) {
+                QString str_dayLunar;
+                if (dayLunar.size() > 2) {
+                    for (int i = 0; i < 2; i++) {
+                        str_dayLunar.append(dayLunar.at(i));
+                    }
+                    str_dayLunar.append("...");
+                } else {
+                    str_dayLunar = dayLunar;
+                }
+                // 水平左对齐，上下居中
+                painter.drawText(QRect(bw + 52 + 10, bh, 50, 25), Qt::AlignLeft | Qt::AlignVCenter, str_dayLunar);
+            } else {
+                painter.drawText(QRect(bw + 52 + 10, bh, 50, 25), Qt::AlignLeft | Qt::AlignVCenter, dayLunar);
+            }
+        }
+    }
+    painter.restore();
+    painter.end();
+}
+
+void CWeekHeadView::wheelEvent(QWheelEvent *e)
+{
+    // 如果滚轮为左右方向则触发信号
+    if (e->angleDelta().x() != 0) {
+        emit signalAngleDelta(e->angleDelta().x());
+    }
+}

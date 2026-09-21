@@ -24,6 +24,10 @@
 #include "sidebarcalendarwidget.h"
 #include "calendarviews.h"
 #include "viewswitcher.h"
+#include "dde25/dde25common.h"
+#include "dde25/monthwindow.h"
+#include "dde25/daywindow.h"
+#include "dde25/weekwindow.h"
 
 #include <QDate>
 #include <QVBoxLayout>
@@ -247,14 +251,44 @@ void CalendarWindow::initUI()
     m_dayView->setFixedSize(CalendarWidth, CalendarHeight);
     m_dayView->setCurrentDate(QDate::currentDate());
 
-    m_viewStack->addWidget(m_yearView);      // YearViewIndex
-    m_viewStack->addWidget(m_calendarView);  // MonthViewIndex
-    m_viewStack->addWidget(m_weekView);      // WeekViewIndex
-    m_viewStack->addWidget(m_dayView);       // DayViewIndex
+    // DDE 25 的月视图换成移植自 dde-calendar 的 CMonthWindow；
+    // m_calendarView 只在 DDE 15 布局里显示，由 relayoutCalendarView() 动态挂载。
+    m_monthWindow = new CMonthWindow;
+    m_monthWindow->setFixedSize(CalendarWidth, CalendarHeight);
+    m_monthWindow->setFirstWeekday(DDE25::fromGxdeWeekday(weekday));
+    m_monthWindow->setCurrentDate(QDate::currentDate());
+    m_monthWindow->setTheMe(DDE25::themeType());
+
+    // 周视图同样换成移植自 dde-calendar 的 CWeekWindow
+    m_weekWindow = new CWeekWindow;
+    m_weekWindow->setFixedSize(CalendarWidth, CalendarHeight);
+    m_weekWindow->setFirstWeekday(DDE25::fromGxdeWeekday(weekday));
+    m_weekWindow->setCurrentDate(QDate::currentDate());
+    m_weekWindow->setTheMe(DDE25::themeType());
+
+    // 日视图同样换成移植自 dde-calendar 的 CDayWindow
+    m_dayWindow = new CDayWindow;
+    m_dayWindow->setFixedSize(CalendarWidth, CalendarHeight);
+    m_dayWindow->setFirstWeekday(DDE25::fromGxdeWeekday(weekday));
+    m_dayWindow->setCurrentDate(QDate::currentDate());
+    m_dayWindow->setTheMe(DDE25::themeType());
+
+    m_viewStack->addWidget(m_yearView);       // YearViewIndex
+    m_viewStack->addWidget(m_monthWindow);    // MonthViewIndex
+    m_viewStack->addWidget(m_weekWindow);     // WeekViewIndex
+    m_viewStack->addWidget(m_dayWindow);      // DayViewIndex
 
     m_dde25Page = new QWidget;
     m_dde25Page->setObjectName("Dde25Page");
     m_dde25Page->setStyleSheet("QWidget#Dde25Page { background: transparent; }");
+
+    // 手写的 WeekView/DayView 已被 CWeekWindow/CDayWindow 取代。保留对象
+    // （成员仍被引用），但挂到 DDE 25 页面上并隐藏，避免成为游离的顶层窗口。
+    m_weekView->setParent(m_dde25Page);
+    m_weekView->hide();
+    m_dayView->setParent(m_dde25Page);
+    m_dayView->hide();
+
     QHBoxLayout *dde25Layout = new QHBoxLayout(m_dde25Page);
     dde25Layout->setContentsMargins(0, 0, 0, 0);
     dde25Layout->setSpacing(0);
@@ -278,8 +312,10 @@ void CalendarWindow::initUI()
         m_calendarView->setCurrentDate(date);
         m_viewSwitcher->setCurrentIndex(MonthViewIndex);
     });
-    connect(m_weekView, &WeekView::dateClicked, this, [this](const QDate &date) {
+    // 双击周视图表头某天 = 选中该天并切到日视图（对齐 dde-calendar 的 signalSwitchView(3)）
+    connect(m_weekWindow, &CWeekWindow::signalsSelectDate, this, [this](const QDate &date) {
         m_calendarView->setCurrentDate(date);
+        m_viewSwitcher->setCurrentIndex(DayViewIndex);
     });
 
     connect(m_calendarView, &CalendarView::currentDateChanged, [this](int year, int month){
@@ -290,8 +326,25 @@ void CalendarWindow::initUI()
         m_infoView->blockSignals(false);
         m_sidebarCalendar->setDate(m_calendarView->currentDate());
         m_yearView->setCurrentDate(m_calendarView->currentDate());
-        m_weekView->setCurrentDate(m_calendarView->currentDate());
-        m_dayView->setCurrentDate(m_calendarView->currentDate());
+        m_weekWindow->setCurrentDate(m_calendarView->currentDate());
+        m_dayWindow->setCurrentDate(m_calendarView->currentDate());
+        m_monthWindow->setCurrentDate(m_calendarView->currentDate());
+    });
+    // DDE 25 月视图选中日期：沿用 m_calendarView 作为唯一的日期来源，
+    // 再由上面的 currentDateChanged 广播回各视图（含 DDE 15 的 InfoView）。
+    connect(m_monthWindow, &CMonthWindow::signalsSelectDate, this, [this](const QDate &date) {
+        m_calendarView->setCurrentDate(date);
+    });
+    // 月视图的月份条、周视图的周数条都只是「换个时间看」，统一回灌到 m_calendarView。
+    // CalendarView::setCurrentDate 对相同日期直接返回，不会形成信号回环。
+    connect(m_monthWindow, &CMonthWindow::signalsCurrentDateChanged, this, [this](const QDate &date) {
+        m_calendarView->setCurrentDate(date);
+    });
+    connect(m_weekWindow, &CWeekWindow::signalsCurrentDateChanged, this, [this](const QDate &date) {
+        m_calendarView->setCurrentDate(date);
+    });
+    connect(m_dayWindow, &CDayWindow::signalsCurrentDateChanged, this, [this](const QDate &date) {
+        m_calendarView->setCurrentDate(date);
     });
     connect(m_calendarView, &CalendarView::currentFestivalChanged, m_infoView, &InfoView::setFestival);
     connect(m_calendarView, &CalendarView::refreshSentenseFinished, m_calendarView, [this](QStringList data){
@@ -441,7 +494,11 @@ void CalendarWindow::menuItemInvoked(QAction *action)
 void CalendarWindow::setWeekday(int weekday) {
     m_calendarView->setFirstWeekday(weekday);
     m_sidebarCalendar->setFirstWeekday(weekday);
+    m_monthWindow->setFirstWeekday(DDE25::fromGxdeWeekday(weekday));
+    m_weekWindow->setFirstWeekday(DDE25::fromGxdeWeekday(weekday));
+    m_dayWindow->setFirstWeekday(DDE25::fromGxdeWeekday(weekday));
     m_settings->setValue("weekday", weekday);
+
 }
 
 void CalendarWindow::setSidebarCollapsed(bool collapsed) {
@@ -480,9 +537,19 @@ void CalendarWindow::applyLayout() {
 
 void CalendarWindow::relayoutCalendarView(bool dde25) {
     if (dde25) {
-        if (m_viewStack->indexOf(m_calendarView) < 0) {
-            m_viewStack->insertWidget(MonthViewIndex, m_calendarView);
+        // DDE 25 用移植来的 CMonthWindow，m_calendarView 在这里只是隐藏的日期源。
+        // 它已经不参加布局，但仍挂在 DDE 25 页面上，避免成为游离的顶层窗口。
+        if (m_viewStack->indexOf(m_calendarView) >= 0) {
+            m_viewStack->removeWidget(m_calendarView);
         }
+        if (m_calendarView->parentWidget() != m_dde25Page) {
+            m_calendarView->setParent(m_dde25Page);
+        }
+        m_calendarView->hide();
+        if (m_viewStack->indexOf(m_monthWindow) < 0) {
+            m_viewStack->insertWidget(MonthViewIndex, m_monthWindow);
+        }
+        m_monthWindow->setCurrentDate(m_calendarView->currentDate());
         m_viewStack->setCurrentIndex(m_viewSwitcher->currentIndex());
     } else {
         if (m_dde15Layout->indexOf(m_calendarView) < 0) {
@@ -504,7 +571,11 @@ void CalendarWindow::updateLayoutActionText(bool dde25)
 void CalendarWindow::initLunar()
 {
     const bool enable_Lunar = m_settings->value("EnableLunar", false).toBool();
-    m_calendarView->setLunarVisible(enable_Lunar ? true : QLocale::system().name().contains("zh"));
+    const bool lunarVisible = enable_Lunar ? true : QLocale::system().name().contains("zh");
+    m_calendarView->setLunarVisible(lunarVisible);
+    m_monthWindow->setLunarVisible(lunarVisible);
+    m_weekWindow->setLunarVisible(lunarVisible);
+    m_dayWindow->setLunarVisible(lunarVisible);
 }
 
 void CalendarWindow::slideMonth(bool next)

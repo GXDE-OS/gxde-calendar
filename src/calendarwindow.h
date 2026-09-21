@@ -31,6 +31,9 @@ DWIDGET_USE_NAMESPACE
 
 class InfoView;
 class SidebarCalendarWidget;
+class CMonthWindow;
+class CWeekWindow;
+class CDayWindow;
 class YearView;
 class WeekView;
 class DayView;
@@ -75,6 +78,10 @@ private:
     YearView *m_yearView = nullptr;
     WeekView *m_weekView = nullptr;
     DayView *m_dayView = nullptr;
+    // 移植自 dde-calendar 的月/周/日视图，仅在 DDE 25 布局下使用
+    CMonthWindow *m_monthWindow = nullptr;
+    CWeekWindow *m_weekWindow = nullptr;
+    CDayWindow *m_dayWindow = nullptr;
     ViewSwitcher *m_viewSwitcher = nullptr;
     QPushButton *m_sidebarToggleButton = nullptr;
     bool m_sidebarCollapsed = false;

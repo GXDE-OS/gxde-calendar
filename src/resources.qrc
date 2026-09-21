@@ -1,6 +1,8 @@
 <RCC>
     <qresource prefix="/">
         <file>resources/dde-calendar.qss</file>
+        <file>resources/icon/dde_calendar_ban_32px.svg</file>
+        <file>resources/icon/dde_calendar_xiu.svg</file>
         <file>resources/icon/gxde-calendar.svg</file>
         <file>resources/icon/gxde-calendar_96.png</file>
         <file>resources/icon/gxde-calendar_48.png</file>
