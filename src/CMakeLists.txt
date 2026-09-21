@@ -74,6 +74,43 @@ list(APPEND SRCS
 ./dde25/daywindow.cpp
 )
 
+# 日程数据层：本地日历 + ICS（文件导入/导出、URL 订阅），无账户系统。
+# 移植自 dde-calendar，见各文件头部注释。
+list(APPEND SRCS
+./schedule/commondef.h
+./schedule/units.h
+./schedule/dschedule.h
+./schedule/dscheduletype.h
+./schedule/dtypecolor.h
+./schedule/dschedulequerypar.h
+./schedule/ddatabase.h
+./schedule/scheduledatabase.h
+./schedule/icsmanager.h
+./schedule/calendarservice.h
+./schedule/units.cpp
+./schedule/dschedule.cpp
+./schedule/dscheduletype.cpp
+./schedule/dtypecolor.cpp
+./schedule/dschedulequerypar.cpp
+./schedule/ddatabase.cpp
+./schedule/scheduledatabase.cpp
+./schedule/icsmanager.cpp
+./schedule/calendarservice.cpp
+./schedule/pinyin/pinyindict.h
+./schedule/pinyin/pinyinsearch.h
+./schedule/pinyin/pinyindict.cpp
+./schedule/pinyin/pinyinsearch.cpp
+./schedule/lunarandfestival/lunarandfestival.h
+./schedule/lunarandfestival/celestialbodies.h
+./schedule/lunarandfestival/method_interface.h
+./schedule/lunarandfestival/lunarcalendar.h
+./schedule/lunarandfestival/lunardateinfo.h
+./schedule/lunarandfestival/celestialbodies.cpp
+./schedule/lunarandfestival/method_interface.cpp
+./schedule/lunarandfestival/lunarcalendar.cpp
+./schedule/lunarandfestival/lunardateinfo.cpp
+)
+
 set(QRC
 ./resources.qrc
 )
@@ -85,6 +122,7 @@ find_package(Qt6Concurrent REQUIRED)
 find_package(Qt6DBus REQUIRED)
 find_package(Qt6Network REQUIRED)
 find_package(Qt6Gui REQUIRED)
+find_package(Qt6Sql REQUIRED)
 find_package(Dtk2widget REQUIRED)
 find_package(Dtk6Core REQUIRED)
 
@@ -95,6 +133,13 @@ target_include_directories(${BIN_NAME} PUBLIC
     /usr/include/dtk6/DLog
     ${Qt6Gui_PRIVATE_INCLUDE_DIRS}
     ${PROJECT_BINARY_DIR}
+    # KCalendarCore 的头文件是平铺的（#include "event.h" 这种），
+    # 参考实现也是直接 include_directories 它的 src 目录。
+    ${PROJECT_SOURCE_DIR}/3rdparty/kcalendarcore/src
+    # schedule/ 下的子目录（pinyin、lunarandfestival）按参考实现的写法
+    # #include "commondef.h"、#include "pinyin/pinyinsearch.h"，
+    # 参考的 include_directories 里有 calendar-common/src，这里对应 schedule/。
+    ${CMAKE_CURRENT_SOURCE_DIR}/schedule
 )
 
 target_link_libraries(${BIN_NAME} PRIVATE
@@ -104,6 +149,8 @@ target_link_libraries(${BIN_NAME} PRIVATE
     ${Qt6Network_LIBRARIES}
     ${Qt6Concurrent_LIBRARIES}
     ${Qt6DBus_LIBRARIES}
+    ${Qt6Sql_LIBRARIES}
+    kcalendarcore
 )
 
 # bin

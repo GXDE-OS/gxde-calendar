@@ -1,8 +1,5 @@
 /*
- * Copyright (C) 2019 ~ 2026 UnionTech Software Technology Co., Ltd.
- *
- * Author:     kirigaya <kirigaya@mkacg.com>
- *             CharOfString <root@charofstring.cc>
+ * Copyright (C) 2026 CharOfString <root@charofstring.cc>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +14,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * ----------------------------------------------------------------------------
- * Adapted from deepin calendar, modified to adapt GXDE calendar.
+ * Origin copyright bearer: 2019 - 2026 UnionTech Software Technology Co., Ltd.
+ * Original author: kirigaya <kirigaya@mkacg.com>
+ * Adapted from the DDE calendar sidebar calendar widget, modified to adapt the
+ * GXDE calendar.
+ * ----------------------------------------------------------------------------
+ * 改自 dde-calendar 的侧边栏小日历，为适配 GXDE 日历做过修改。
  */
 
 #ifndef SIDEBARCALENDARWIDGET_H

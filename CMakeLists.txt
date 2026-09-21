@@ -25,6 +25,10 @@ if (NOT (${CMAKE_BUILD_TYPE} MATCHES "Debug"))
                     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif ()
 
+# ICS 解析/序列化依赖（KCalendarCore + 系统 libical）。
+# 放在 src 之前，这样日程数据层可以无条件链它。
+add_subdirectory("3rdparty/kcalendarcore")
+
 add_subdirectory("src")
 
 #qm files
