@@ -36,12 +36,16 @@
 #include "dscheduletype.h"
 #include "dtypecolor.h"
 
+#include <QDateTime>
+#include <QHash>
 #include <QMap>
 #include <QObject>
 #include <QString>
+#include <QVector>
 
 class ScheduleDataBase;
 class IcsManager;
+class QTimer;
 
 /**
  * @brief 日程数据层对外的唯一入口。
@@ -106,10 +110,36 @@ public:
      */
     DSchedule::List getRemindSchedule();
 
+    /**
+     * @brief createUserScheduleType   新建一个「用户日历」（导入 .ics 时用）
+     * @param preferredColorCode       首选颜色色值，为空或对不上系统调色板时自动挑
+     *
+     * 返回新建类型的 ID。颜色必须落到 typeColor 表里的某一行：类型表和颜色表是
+     * inner join 的，颜色对不上这个日历在所有列表里都不会出现。
+     */
+    QString createUserScheduleType(const QString &name, const QString &preferredColorCode = QString());
+
     ///////////////ICS：本地文件
     /**
+     * @brief IcsFileHints  导入弹窗预填用：文件里带的日历名和颜色
+     */
+    struct IcsFileHints {
+        bool valid = false;   //文件存在且能解析
+        QString name;         //推荐日历名（文件里的提示，退回文件名，最长 20 字符）
+        QString colorCode;    //文件里带的颜色，可能是空
+        int eventCount = 0;
+    };
+
+    /**
+     * @brief readIcsFileHints   读取 .ics 文件里的类型提示（X-DDE-CALENDAR-TYPE-NAME
+     *                           等），文件读不了时 valid 为 false
+     */
+    IcsFileHints readIcsFileHints(const QString &icsFilePath);
+
+    /**
      * @brief importSchedule   把 .ics 文件导入到指定日程类型
-     * @param cleanExists      导入前清空该类型已有日程（参考实现默认行为）
+     * @param cleanExists      导入前清空该类型已有日程（参考实现默认行为）；
+     *                         导入到已有的日历要传 false，否则会把原有日程清掉
      */
     bool importSchedule(const QString &icsFilePath, const QString &typeID, bool cleanExists = true);
 
@@ -144,11 +174,39 @@ public:
      */
     void refreshAllIcs(bool force = false);
 
+    /**
+     * @brief 订阅列表里的一项，给管理界面用。
+     *
+     * 订阅记录（地址、间隔、上次同步）在 icsSubscription 表里，界面上还要显示名称
+     * 和颜色，那两项挂在日程类型上，所以这里合成一份给界面。
+     */
+    struct IcsSubscriptionInfo {
+        QString typeID;
+        QString displayName;        //日程类型名，列表上的标题
+        QString colorCode;          //类型颜色（hex），列表前的色点
+        QString url;                //远程 .ics 地址
+        int refreshIntervalMin = 0; //0 表示不自动刷新
+        QDateTime lastSync;         //上次拉取成功的时间，无效表示还没同步过
+    };
+
+    /**
+     * @brief getIcsSubscriptionList   当前所有 ICS 订阅，按创建时间排
+     */
+    QVector<IcsSubscriptionInfo> getIcsSubscriptionList();
+
 signals:
     //日程数据有变化，界面需要重新查询
     void scheduleUpdate();
     //日程类型或颜色有变化
     void scheduleTypeUpdate();
+    /**
+     * @brief 一次订阅拉取结束。
+     *
+     * 成功后 lastSync 已经写库，界面重新取列表即可；ok 为 false 时 error 是失败
+     * 原因（网络错误、HTTP 状态码等），可以直接显示给用户。「远端没变」（304）
+     * 也算成功。
+     */
+    void icsRefreshFinished(const QString &typeID, bool ok, const QString &error);
 
 private:
     explicit CalendarService(QObject *parent = nullptr);
@@ -164,8 +222,32 @@ private:
      */
     void ensureUidAvailable(const DSchedule::Ptr &schedule);
 
+    /**
+     * @brief markIcsSynced  记下这次拉取的时间和 ETag
+     *
+     * 内容有更新和「远端没变」（304）都要记：不记的话 refreshAllIcs() 会按间隔
+     * 一遍遍重拉同一个地址。
+     */
+    void markIcsSynced(const QString &typeID, const QString &etag);
+
+    /**
+     * @brief icsRefetchDue   这个订阅现在到点了吗
+     *
+     * 拉取失败不会更新 lastSync（那是「上次成功同步」的时间），所以光看 lastSync 的话，
+     * 从来没成功过的订阅每次 tick 都会重发请求 —— 5 分钟一次、一天 288 次，正是被
+     * 服务端当成「automated queries」限流的原因。所以还要看上次「尝试」的时间，
+     * 失败过的按 5 分钟起步逐次翻倍退避。
+     */
+    bool icsRefetchDue(const QString &typeID, const QDateTime &lastSync,
+                       int refreshIntervalMin, const QDateTime &now) const;
+
     ScheduleDataBase *m_db = nullptr;
     IcsManager *m_ics = nullptr;
+    //订阅的自动刷新定时器，见构造函数里的说明
+    QTimer *m_icsRefreshTimer = nullptr;
+    //上次发起拉取的时间 / 连续失败次数，见 icsRefetchDue()
+    QHash<QString, QDateTime> m_icsLastAttempt;
+    QHash<QString, int> m_icsFailCount;
 };
 
 #endif // CALENDARSERVICE_H

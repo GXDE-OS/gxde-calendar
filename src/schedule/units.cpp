@@ -33,6 +33,12 @@
 QString dtToString(const QDateTime &dt)
 {
     // qCDebug(CommonLogger) << "Converting QDateTime to string:" << dt;
+    //空时间直接给空串。下面的 dt.toString() 对空时间是空串，只剩时区尾巴拼出来，
+    //落库就是 "+06:00" 这种脏数据（dtUpdate/dtDelete/lastSync 都可能是空时间）。
+    if (!dt.isValid()) {
+        return QString();
+    }
+
     const int offsetSeconds = dt.timeZone().offsetFromUtc(dt);
     const QChar sign = offsetSeconds < 0 ? QLatin1Char('-') : QLatin1Char('+');
     const int absoluteSeconds = qAbs(offsetSeconds);

@@ -38,6 +38,9 @@
 
 #include <QDateTime>
 #include <QDebug>
+#include <QFileInfo>
+#include <QSet>
+#include <QTimer>
 #include <QUuid>
 
 namespace {
@@ -79,15 +82,31 @@ CalendarService::CalendarService(QObject *parent)
     connect(m_ics, &IcsManager::fetchFinished, this,
             [this](const QString &token, bool ok, bool notModified, const QByteArray &data,
                    const QString &etag, const QString &error) {
-                Q_UNUSED(error)
-                if (!ok || notModified) {
+                const QString typeID = token;
+                if (!ok) {
+                    //失败次数决定下次多久再试，见 icsRefetchDue()
+                    m_icsFailCount.insert(typeID, m_icsFailCount.value(typeID) + 1);
+                    qCWarning(ServiceLogger) << "ICS subscription fetch failed:" << typeID << error;
+                    emit icsRefreshFinished(typeID, false, error);
+                    return;
+                }
+                //拉成功就回到正常间隔
+                m_icsFailCount.remove(typeID);
+
+                //304：远端没变，本地内容就是最新的，记一下时间即可
+                if (notModified) {
+                    markIcsSynced(typeID, QString());
+                    emit icsRefreshFinished(typeID, true, QString());
                     return;
                 }
 
-                const QString typeID = token;
                 const DSchedule::List schedules = m_ics->loadFromData(data);
                 if (schedules.isEmpty()) {
+                    //拉取本身是成功的，只是这份日历里没有事件。本地已有的事件保持不动：
+                    //远端返回空有可能是服务端临时抽风，直接清库会把数据丢掉
                     qCWarning(ServiceLogger) << "ICS subscription returned no events, type:" << typeID;
+                    markIcsSynced(typeID, etag);
+                    emit icsRefreshFinished(typeID, true, QString());
                     return;
                 }
 
@@ -102,19 +121,37 @@ CalendarService::CalendarService(QObject *parent)
                     }
                 }
 
-                ScheduleDataBase::IcsSubscription sub = m_db->getIcsSubscription(typeID);
-                if (!sub.typeID.isEmpty()) {
-                    sub.lastSync = QDateTime::currentDateTime();
-                    if (!etag.isEmpty()) {
-                        sub.lastETag = etag;
-                    }
-                    m_db->upsertIcsSubscription(sub);
-                }
+                markIcsSynced(typeID, etag);
 
                 qCInfo(ServiceLogger) << "ICS subscription refreshed:" << typeID
                                       << "imported" << imported << "of" << schedules.size();
                 emit scheduleUpdate();
+                emit icsRefreshFinished(typeID, true, QString());
             });
+
+    //订阅的自动刷新。数据层自己不跑定时器的话，订阅记录里的「刷新间隔」就只是个
+    //摆设（refreshAllIcs() 没有任何调用方）。5 分钟查一次，真正到点的订阅才发请求。
+    m_icsRefreshTimer = new QTimer(this);
+    m_icsRefreshTimer->setInterval(5 * 60 * 1000);
+    connect(m_icsRefreshTimer, &QTimer::timeout, this, [this] { refreshAllIcs(false); });
+    m_icsRefreshTimer->start();
+    //启动时补一次：上次同步可能是几天前（甚至从来没同步过）的事了
+    QTimer::singleShot(5 * 1000, this, [this] { refreshAllIcs(false); });
+}
+
+void CalendarService::markIcsSynced(const QString &typeID, const QString &etag)
+{
+    ScheduleDataBase::IcsSubscription sub = m_db->getIcsSubscription(typeID);
+    if (sub.typeID.isEmpty()) {
+        return;
+    }
+
+    sub.lastSync = QDateTime::currentDateTime();
+    //304 响应一般不带 ETag，这时候保留库里的那份
+    if (!etag.isEmpty()) {
+        sub.lastETag = etag;
+    }
+    m_db->upsertIcsSubscription(sub);
 }
 
 CalendarService::~CalendarService() = default;
@@ -281,7 +318,73 @@ DSchedule::List CalendarService::getRemindSchedule()
     return m_db->getRemindSchedule();
 }
 
+QString CalendarService::createUserScheduleType(const QString &name, const QString &preferredColorCode)
+{
+    if (name.isEmpty()) {
+        return QString();
+    }
+
+    const DTypeColor::List colors = getSysColors();
+    if (colors.isEmpty()) {
+        //调色板都没建起来，建出来的类型会 join 不上颜色表，不如不建
+        qCWarning(ServiceLogger) << "No system color available, cannot create type:" << name;
+        return QString();
+    }
+
+    //先按色值把文件里带的颜色对到系统调色板上
+    QString colorID;
+    if (!preferredColorCode.isEmpty()) {
+        for (const DTypeColor::Ptr &color : colors) {
+            if (color->colorCode().compare(preferredColorCode, Qt::CaseInsensitive) == 0) {
+                colorID = color->colorID();
+                break;
+            }
+        }
+    }
+
+    //对不上就挑一个还没有日历在用的颜色，免得新日历跟已有的撞色
+    if (colorID.isEmpty()) {
+        QSet<QString> usedColors;
+        const DScheduleType::List types = getScheduleTypeList();
+        for (const DScheduleType::Ptr &type : types) {
+            usedColors.insert(type->getColorID());
+        }
+        for (const DTypeColor::Ptr &color : colors) {
+            if (!usedColors.contains(color->colorID())) {
+                colorID = color->colorID();
+                break;
+            }
+        }
+    }
+
+    //九个颜色都被用掉了就用第一个，总得有颜色
+    if (colorID.isEmpty()) {
+        colorID = colors.first()->colorID();
+    }
+
+    const QString typeID = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    return createScheduleType(makeUserType(typeID, name, name, colorID));
+}
+
 ///////////////ICS：本地文件
+
+CalendarService::IcsFileHints CalendarService::readIcsFileHints(const QString &icsFilePath)
+{
+    IcsFileHints hints;
+
+    const IcsManager::IcsFileInfo info = m_ics->readFileInfo(icsFilePath);
+    if (!info.valid) {
+        return hints;
+    }
+
+    hints.valid = true;
+    hints.colorCode = info.colorCode;
+    hints.eventCount = info.eventCount;
+    //名字优先级跟参考实现一致：文件里的类型名 -> X-WR-CALNAME -> 文件名，
+    //再截到 20 个字符，免得名字长到把列表撑变形
+    hints.name = (info.typeName.isEmpty() ? QFileInfo(icsFilePath).baseName() : info.typeName).left(20);
+    return hints;
+}
 
 bool CalendarService::importSchedule(const QString &icsFilePath, const QString &typeID,
                                      bool cleanExists)
@@ -395,6 +498,8 @@ bool CalendarService::unsubscribeIcs(const QString &typeID)
     const bool hadSubscription = m_db->deleteIcsSubscription(typeID);
     m_db->deleteSchedulesByScheduleTypeID(typeID, true);
     m_db->deleteScheduleTypeByID(typeID, 1);
+    m_icsLastAttempt.remove(typeID);
+    m_icsFailCount.remove(typeID);
 
     qCInfo(ServiceLogger) << "Unsubscribed ICS type:" << typeID;
     // 即使没有订阅记录也要发信号：类型和日程确实被删了
@@ -410,8 +515,32 @@ bool CalendarService::refreshIcs(const QString &typeID)
         qCWarning(ServiceLogger) << "No ICS subscription for type:" << typeID;
         return false;
     }
+    //用户手动点的刷新：记一笔尝试时间，不然定时器下一轮还会再拉一次
+    m_icsLastAttempt.insert(typeID, QDateTime::currentDateTime());
     m_ics->fetch(sub.url, sub.lastETag, typeID);
     return true;
+}
+
+bool CalendarService::icsRefetchDue(const QString &typeID, const QDateTime &lastSync,
+                                    int refreshIntervalMin, const QDateTime &now) const
+{
+    //「上次成功同步」和「上次尝试」取更近的那个：失败不会更新 lastSync，
+    //只看它的话失败的订阅会一直重发
+    const QDateTime lastTry = m_icsLastAttempt.value(typeID);
+    const QDateTime last = (lastSync.isValid() && lastSync > lastTry) ? lastSync : lastTry;
+    if (!last.isValid()) {
+        //从来没同步成功过也从没试过（刚订阅）：立刻拉
+        return true;
+    }
+
+    const int fails = m_icsFailCount.value(typeID);
+    //失败过就 5 分钟起步、每次翻倍（封顶 5 小时出头），但不超过用户设的间隔 ——
+    //用户设 15 分钟就是 15 分钟，设 24 小时也不该因为一次超时等满一天
+    const int waitMin = (fails > 0)
+            ? qMin(5 << qMin(fails - 1, 6), qMax(refreshIntervalMin, 5))
+            : refreshIntervalMin;
+
+    return last.secsTo(now) >= waitMin * 60;
 }
 
 void CalendarService::refreshAllIcs(bool force)
@@ -419,11 +548,43 @@ void CalendarService::refreshAllIcs(bool force)
     const QVector<ScheduleDataBase::IcsSubscription> subs = m_db->getIcsSubscriptionList();
     const QDateTime now = QDateTime::currentDateTime();
     for (const ScheduleDataBase::IcsSubscription &sub : subs) {
-        if (!force && sub.refreshIntervalMin > 0 && sub.lastSync.isValid()) {
-            if (sub.lastSync.secsTo(now) < sub.refreshIntervalMin * 60) {
-                continue;
-            }
+        //间隔为 0 是「不自动刷新」，自动刷新时直接跳过；手动刷新（force）不看间隔
+        if (!force && sub.refreshIntervalMin <= 0) {
+            continue;
         }
+        if (!force && !icsRefetchDue(sub.typeID, sub.lastSync, sub.refreshIntervalMin, now)) {
+            continue;
+        }
+        //手动刷新也记一笔，免得刚点完「全部刷新」定时器又拉一遍
+        m_icsLastAttempt.insert(sub.typeID, now);
         m_ics->fetch(sub.url, sub.lastETag, sub.typeID);
     }
+}
+
+QVector<CalendarService::IcsSubscriptionInfo> CalendarService::getIcsSubscriptionList()
+{
+    QVector<IcsSubscriptionInfo> list;
+
+    const QVector<ScheduleDataBase::IcsSubscription> subs = m_db->getIcsSubscriptionList();
+    for (const ScheduleDataBase::IcsSubscription &sub : subs) {
+        IcsSubscriptionInfo info;
+        info.typeID = sub.typeID;
+        info.url = sub.url;
+        info.refreshIntervalMin = sub.refreshIntervalMin;
+        info.lastSync = sub.lastSync;
+
+        const DScheduleType::Ptr type = getScheduleTypeByID(sub.typeID);
+        if (!type.isNull()) {
+            info.displayName = type->displayName();
+            info.colorCode = type->getColorCode();
+        }
+        //类型没了的孤儿订阅：名字用地址兜底，列表上至少能看出订阅的是什么
+        if (info.displayName.isEmpty()) {
+            info.displayName = sub.url;
+        }
+
+        list.append(info);
+    }
+
+    return list;
 }

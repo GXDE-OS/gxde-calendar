@@ -61,8 +61,11 @@ public slots:
     void slotCreateSchedule(const QDateTime &dateTime);
     // 编辑日程：双击日程块
     void slotEditSchedule(const DSchedule::Ptr &schedule);
+    // 订阅在线日历的管理弹窗（标题栏菜单，在「设置窗口背景」下方）
+    void slotManageIcsSubscription();
 
 protected:
+    void showEvent(QShowEvent *event) override;
     void wheelEvent(QWheelEvent *);
 
 protected slots:
@@ -110,6 +113,8 @@ private:
     void initAnimation();
     void initDateChangeMonitor();
     void setupMenu();
+    // 把「管理在线日历」挪到 DTK 内置的「设置窗口背景」下面，见实现里的时序说明
+    void repositionIcsAction();
     void slideMonth(bool next);
     QPixmap getCalendarSnapshot() const;
     QPixmap joint(QPixmap & top, QPixmap & bottom) const;
@@ -133,6 +138,9 @@ private:
     QAction *m_satAction;
     QAction *m_sunAction;
     QAction *m_layoutAction;
+    // 「管理在线日历」：DTK 的内置菜单项在 showEvent 里才追加，位置见 setupMenu()
+    QAction *m_icsAction = nullptr;
+    bool m_icsActionRepositioned = false;
 
     QSettings *m_settings;
     QSettings *m_dateSettings;

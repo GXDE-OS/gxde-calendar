@@ -63,6 +63,22 @@ public:
     DSchedule::List loadFromData(const QByteArray &data, bool *ok = nullptr) const;
 
     /**
+     * @brief IcsFileInfo  文件里带的类型提示（saveToFile 写进去的扩展属性）
+     */
+    struct IcsFileInfo {
+        bool valid = false;   //文件存在且能解析
+        QString typeName;     //X-DDE-CALENDAR-TYPE-NAME，为空时退回 X-WR-CALNAME
+        QString colorCode;    //X-DDE-CALENDAR-TYPE-COLOR，可能是空
+        int eventCount = 0;
+    };
+
+    /**
+     * @brief readFileInfo     只读文件里的类型提示，给导入弹窗预填名字和颜色用。
+     *                         文件读不了时返回的 valid 为 false。
+     */
+    IcsFileInfo readFileInfo(const QString &icsFilePath) const;
+
+    /**
      * @brief saveToFile       把日程写成 .ics 文件
      *
      * 参考实现在日历对象上挂 X-DDE-CALENDAR-TYPE-ID / -NAME / -COLOR 和

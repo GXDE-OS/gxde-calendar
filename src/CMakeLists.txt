@@ -32,6 +32,17 @@ set(SRCS
 ./viewswitcher.cpp
 )
 
+# 在线 ICS 订阅/导入的三个弹窗：GXDE 日历原创（参考实现只有 CalDAV 账户，没有订阅），
+# 放在这里而不是 dde25/ —— 数据层的功能，两种布局下都能用。
+list(APPEND SRCS
+./subscribeicsdlg.h
+./subscribeicsdlg.cpp
+./importicsdlg.h
+./importicsdlg.cpp
+./icssubscriptiondlg.h
+./icssubscriptiondlg.cpp
+)
+
 # DDE 25 视图：移植自 dde-calendar，仅供 DDE 25 布局使用
 list(APPEND SRCS
 ./dde25/dde25common.h

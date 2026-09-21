@@ -30,6 +30,7 @@
 #include "dde25/weekwindow.h"
 #include "dde25/scheduledlg.h"
 #include "dde25/sidebarschedulelist.h"
+#include "icssubscriptiondlg.h"
 #include "schedule/calendarservice.h"
 
 #include <QDate>
@@ -535,6 +536,7 @@ void CalendarWindow::setupMenu()
 
         titlebar->menu()->addSeparator();
         m_layoutAction = titlebar->menu()->addAction(tr("Switch to DDE 25 layout"));
+        m_icsAction = titlebar->menu()->addAction(tr("Manage Online Calendars"));
 
         // 标题栏自定义区域：左侧只有侧边栏折叠按钮，Y/M/W/D 紧随其后
         // 左边距 = DTitlebar 主布局的 6px + 这里的 12px，与 gxde-file-manager
@@ -564,6 +566,11 @@ void CalendarWindow::menuItemInvoked(QAction *action)
         const bool newDde25 = !dde25;
         m_settings->setValue("layout", newDde25 ? QStringLiteral("dde25") : QStringLiteral("dde15"));
         applyLayout();
+        return;
+    }
+
+    if (action == m_icsAction) {
+        slotManageIcsSubscription();
         return;
     }
 
@@ -781,6 +788,55 @@ void CalendarWindow::slotEditSchedule(const DSchedule::Ptr &schedule)
     CScheduleDlg scheduleDlg(0, this, false);
     scheduleDlg.setData(schedule);
     scheduleDlg.exec();
+}
+
+void CalendarWindow::showEvent(QShowEvent *event)
+{
+    DMainWindow::showEvent(event);
+
+    // DTitlebar::showEvent() 里才把「设置窗口背景」这些内置项追加到菜单末尾，
+    // 而它跟本窗口的 showEvent 谁先谁后不保证。挪位置又不能在菜单弹出过程中做
+    // （在 aboutToShow 里 insertAction() 会改到正在布局的 action 列表，xcb 下会崩），
+    // 所以推到事件循环下一轮：那时菜单已经彻底建好，离用户点开也还早。
+    if (m_icsAction != nullptr && !m_icsActionRepositioned) {
+        QTimer::singleShot(0, this, [this] { repositionIcsAction(); });
+    }
+}
+
+void CalendarWindow::repositionIcsAction() {
+    m_icsActionRepositioned = true;
+
+    DTitlebar *titlebar = this->titlebar();
+    if (titlebar == nullptr || titlebar->menu() == nullptr || m_icsAction == nullptr) {
+        return;
+    }
+
+    QMenu *menu = titlebar->menu();
+    const QList<QAction *> actions = menu->actions();
+    const QString backgroundText =
+        QCoreApplication::translate("TitleBarMenu", "Set Window Background");
+
+    for (int i = 0; i < actions.size(); i++) {
+        if (actions.at(i)->text() != backgroundText) {
+            continue;
+        }
+
+        QAction *next = (i + 1 < actions.size()) ? actions.at(i + 1) : nullptr;
+        if (next == m_icsAction) {
+            return;
+        }
+        if (next != nullptr) {
+            menu->insertAction(next, m_icsAction);
+        } else {
+            menu->addAction(m_icsAction);
+        }
+        return;
+    }
+}
+
+void CalendarWindow::slotManageIcsSubscription() {
+    CIcsSubscriptionDlg dlg(this);
+    dlg.exec();
 }
 
 void CalendarWindow::updateTime() const

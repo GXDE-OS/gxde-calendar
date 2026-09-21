@@ -32,7 +32,9 @@
 #include "icalformat.h"
 #include "memorycalendar.h"
 
+#include <QCoreApplication>
 #include <QDebug>
+#include <QFile>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
@@ -45,6 +47,28 @@ namespace {
 QTimeZone currentTimeZone()
 {
     return QDateTime::currentDateTime().timeZone();
+}
+
+// 有 HTTP 状态码时的错误文字。不能用 QNetworkReply::errorString()：那句话是
+// 「Error transferring <url> - server replied: <reason phrase>」拼的，而 HTTP/2
+// 的响应行里根本没有 reason phrase，拼出来就是「server replied: 」后面空着
+// （实测 Google 对私有 ICS 地址限流返回 429 时就是这样，日志里什么也看不出来）。
+// 429/403/404 这几个订阅最常见的给一句人话，其余至少把状态码带上。
+QString httpErrorText(int status)
+{
+    switch (status) {
+    case 403:
+        return QCoreApplication::translate("IcsManager", "Access denied (HTTP 403)");
+    case 404:
+        return QCoreApplication::translate("IcsManager",
+                                           "Not found (HTTP 404), check the subscription address");
+    case 429:
+        return QCoreApplication::translate(
+                "IcsManager",
+                "Too many requests (HTTP 429), the server is rate limiting, try again later");
+    default:
+        return QCoreApplication::translate("IcsManager", "Server returned HTTP %1").arg(status);
+    }
 }
 
 } // namespace
@@ -83,6 +107,31 @@ DSchedule::List IcsManager::loadFromFile(const QString &icsFilePath, bool *ok) c
 
     qCDebug(ServiceLogger) << "Loaded" << schedules.size() << "events from" << icsFilePath;
     return schedules;
+}
+
+IcsManager::IcsFileInfo IcsManager::readFileInfo(const QString &icsFilePath) const
+{
+    IcsFileInfo info;
+
+    if (icsFilePath.isEmpty() || !QFile::exists(icsFilePath)) {
+        return info;
+    }
+
+    KCalendarCore::ICalFormat icalformat;
+    KCalendarCore::MemoryCalendar::Ptr cal(new KCalendarCore::MemoryCalendar(currentTimeZone()));
+    if (!icalformat.load(cal, icsFilePath)) {
+        qCWarning(ServiceLogger) << "Failed to read ICS file:" << icsFilePath;
+        return info;
+    }
+
+    info.valid = true;
+    info.typeName = cal->nonKDECustomProperty("X-DDE-CALENDAR-TYPE-NAME");
+    if (info.typeName.isEmpty()) {
+        info.typeName = cal->nonKDECustomProperty("X-WR-CALNAME");
+    }
+    info.colorCode = cal->nonKDECustomProperty("X-DDE-CALENDAR-TYPE-COLOR");
+    info.eventCount = cal->events().count();
+    return info;
 }
 
 DSchedule::List IcsManager::loadFromData(const QByteArray &data, bool *ok) const
@@ -180,13 +229,35 @@ void IcsManager::onReplyFinished(QNetworkReply *reply, bool hadETag, const QStri
     }
 
     if (reply->error() != QNetworkReply::NoError) {
-        const QString error = reply->errorString();
-        qCWarning(ServiceLogger) << "Failed to fetch ICS from" << reply->url() << ":" << error;
+        //拿到状态码就自己拼错误文字（原因见 httpErrorText()）：没有状态码说明压根
+        //没收到响应（DNS 解析不了、超时、TLS 失败），这时 errorString() 是有内容的
+        const QString error = (status > 0) ? httpErrorText(status) : reply->errorString();
+        qCWarning(ServiceLogger) << "Failed to fetch ICS from" << reply->url()
+                                 << "status" << status << ":" << error;
         emit fetchFinished(token, false, false, QByteArray(), QString(), error);
         return;
     }
 
     const QByteArray data = reply->readAll();
+
+    //拉回来的东西不是 ICS 就别往下走。最典型的坑是把浏览器地址栏里的日历网页地址
+    //（比如 calendar.google.com/calendar/u/0?cid=...）当成订阅地址粘进来：服务端 200
+    // 返回一个登录页，KCalendarCore 解析失败时会把整页 HTML 打进日志（一页几百 KB），
+    //用户看到的也只有一句 parse error。这里先看内容，给一条能看懂的错误。
+    if (!data.contains("BEGIN:VCALENDAR")) {
+        const bool looksLikeHtml = reply->header(QNetworkRequest::ContentTypeHeader)
+                                           .toString()
+                                           .contains(QStringLiteral("html"), Qt::CaseInsensitive)
+                || data.left(512).trimmed().startsWith('<');
+        QString error = looksLikeHtml
+                ? tr("This address returned a web page, not an ICS feed")
+                : tr("The content returned is not in ICS format");
+        qCWarning(ServiceLogger) << "ICS subscription content rejected:" << reply->url()
+                                 << (looksLikeHtml ? "html page" : "not ics") << data.size() << "bytes";
+        emit fetchFinished(token, false, false, QByteArray(), QString(), error);
+        return;
+    }
+
     const QString etag = QString::fromUtf8(reply->rawHeader("ETag"));
     qCDebug(ServiceLogger) << "Fetched" << data.size() << "bytes from" << reply->url();
     emit fetchFinished(token, true, false, data, etag, QString());
