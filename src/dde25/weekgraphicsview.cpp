@@ -195,9 +195,13 @@ void CWeekGraphicsView::updateHourPos()
         m_vHours.append(static_cast<int>(qFloor(i / timeInterval + 0.5)));
     }
 
+    const bool showCurrentTime = m_beginDate.isValid() && m_endDate.isValid()
+        && m_currentDateTime.date() >= m_beginDate
+            && m_currentDateTime.date() <= m_endDate;
+
     const qreal currentTime = m_currentDateTime.time().msecsSinceStartOfDay() / 86400000.0
                               * m_Scene->height();
-    if (currentTime > beginpos && currentTime < leftBottomRealPos.y()) {
+    if (showCurrentTime && currentTime > beginpos && currentTime < leftBottomRealPos.y()) {
         m_currentTimeType = 1;
         const QPoint point = mapFromScene(leftBottomRealPos.x(), currentTime);
         m_vLRLarge.append(point.y());

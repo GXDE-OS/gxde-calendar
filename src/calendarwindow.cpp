@@ -399,8 +399,20 @@ void CalendarWindow::initDateChangeMonitor()
             updateDate();
         }
         updateTime();
+        updateDde25CurrentTime();
     });
     timer->start();
+}
+
+void CalendarWindow::updateDde25CurrentTime() {
+    const QDateTime now = QDateTime::currentDateTime();
+    if (m_dayWindow && m_dayWindow->isVisible()) {
+        m_dayWindow->setCurrentDateTime(now);
+    } else if (m_weekWindow && m_weekWindow->isVisible()) {
+        m_weekWindow->setCurrentDateTime(now);
+    } else if (m_monthWindow && m_monthWindow->isVisible()) {
+        m_monthWindow->setCurrentDateTime(now);
+    }
 }
 
 void CalendarWindow::setupMenu()

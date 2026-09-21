@@ -103,6 +103,7 @@ private:
     void updateTime() const;
     void updateSentense() const;
     void updateDate() const;
+    void updateDde25CurrentTime();
 
     // Style changer
     void applyLayout();

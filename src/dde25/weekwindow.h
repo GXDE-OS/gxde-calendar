@@ -28,6 +28,7 @@
 #define WEEKWINDOW_H
 
 #include <QDate>
+#include <QDateTime>
 #include <QVector>
 #include <QWidget>
 
@@ -52,6 +53,7 @@ public:
     // 设置当前选中日期
     void setCurrentDate(const QDate &date);
     QDate currentDate() const { return m_currentDate; }
+    void setCurrentDateTime(const QDateTime &currentDate);
     // 设置一周的起始日
     void setFirstWeekday(Qt::DayOfWeek weekday);
     void setTheMe(int type = 0);
@@ -92,6 +94,7 @@ private:
     QDate m_currentDate;
     QDate m_startDate;
     QDate m_endDate;
+    QDateTime m_currentDateTime = QDateTime::currentDateTime();
     Qt::DayOfWeek m_firstWeekday = Qt::Monday;
     int m_themetype = 0;
 

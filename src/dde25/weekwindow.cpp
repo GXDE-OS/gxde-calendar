@@ -183,6 +183,16 @@ void CWeekWindow::setCurrentDate(const QDate &date)
     emit signalsCurrentDateChanged(m_currentDate);
 }
 
+void CWeekWindow::setCurrentDateTime(const QDateTime &currentDate) {
+    const bool dateRolledOver = m_currentDateTime.date() != currentDate.date();
+    m_currentDateTime = currentDate;
+    m_weekBody->setCurrentDate(currentDate);
+
+    if (dateRolledOver) {
+        updateShowDate();
+    }
+}
+
 void CWeekWindow::setFirstWeekday(Qt::DayOfWeek weekday)
 {
     m_firstWeekday = weekday;

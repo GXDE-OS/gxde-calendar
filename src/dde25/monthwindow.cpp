@@ -164,6 +164,14 @@ void CMonthWindow::setCurrentDate(const QDate &date)
     emit signalsCurrentDateChanged(date);
 }
 
+void CMonthWindow::setCurrentDateTime(const QDateTime &currentDate) {
+    const bool dateRolledOver = m_currentDateTime.date() != currentDate.date();
+    m_currentDateTime = currentDate;
+    if (dateRolledOver) {
+        m_monthView->refresh();
+    }
+}
+
 void CMonthWindow::setFirstWeekday(Qt::DayOfWeek weekday)
 {
     m_monthView->setFirstWeekday(weekday);

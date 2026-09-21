@@ -27,6 +27,7 @@
 #define MONTHWINDOW_H
 
 #include <QDate>
+#include <QDateTime>
 #include <QMap>
 #include <QVector>
 #include <QWidget>
@@ -47,6 +48,7 @@ public:
     explicit CMonthWindow(QWidget *parent = nullptr);
 
     void setCurrentDate(const QDate &date);
+    void setCurrentDateTime(const QDateTime &currentDate);
     void setFirstWeekday(Qt::DayOfWeek weekday);
     void setTheMe(int type = 0);
     void setLunarVisible(bool visible);
@@ -75,6 +77,7 @@ private:
     QPushButton *m_today = nullptr;
 
     QDate m_currentDate;
+    QDateTime m_currentDateTime = QDateTime::currentDateTime();
     int m_themetype = 0;
 };
 

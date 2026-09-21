@@ -180,10 +180,14 @@ void CDayWindow::setCurrentDate(const QDate &date)
     emit signalsCurrentDateChanged(m_selectDate);
 }
 
-void CDayWindow::setCurrentDateTime(const QDateTime &currentDate)
-{
+void CDayWindow::setCurrentDateTime(const QDateTime &currentDate) {
+    const bool dateRolledOver = m_currentDateTime.date() != currentDate.date();
     m_currentDateTime = currentDate;
     m_scheduleView->setCurrentDate(currentDate);
+
+    if (dateRolledOver) {
+        updateShowDate();
+    }
 }
 
 void CDayWindow::setFirstWeekday(Qt::DayOfWeek weekday)
