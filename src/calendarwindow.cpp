@@ -58,6 +58,7 @@ static const int ContentLeftRightPadding = 80;
 static const int SidebarWidth = 220;
 static const int ViewSwitcherWidth = 160;
 static const int ViewSwitcherHeight = 24;
+static const int Dde25SidePadding = 16;
 
 static const int MinYearValue = 1900;
 
@@ -165,7 +166,7 @@ void CalendarWindow::initUI()
     m_calendarView->setCurrentDate(QDate::currentDate());
 
     m_sidebarCalendar = new SidebarCalendarWidget;
-    m_sidebarCalendar->setFixedSize(SidebarWidth, CalendarHeight);
+    m_sidebarCalendar->setFixedWidth(SidebarWidth);
     m_sidebarCalendar->setFirstWeekday(weekday);
     m_sidebarCalendar->setDate(QDate::currentDate());
     m_sidebarCalendar->setObjectName("SidebarCalendarWidget");
@@ -237,8 +238,13 @@ void CalendarWindow::initUI()
 
     m_viewStack = new QStackedWidget;
 
+    const auto makeStretchable = [](QWidget *w) {
+        w->setMinimumSize(CalendarWidth, CalendarHeight);
+        w->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    };
+
     m_yearView = new YearView;
-    m_yearView->setFixedSize(CalendarWidth, CalendarHeight);
+    makeStretchable(m_yearView);
     m_yearView->setFirstWeekday(weekday);
     m_yearView->setCurrentDate(QDate::currentDate());
 
@@ -254,21 +260,21 @@ void CalendarWindow::initUI()
     // DDE 25 的月视图换成移植自 dde-calendar 的 CMonthWindow；
     // m_calendarView 只在 DDE 15 布局里显示，由 relayoutCalendarView() 动态挂载。
     m_monthWindow = new CMonthWindow;
-    m_monthWindow->setFixedSize(CalendarWidth, CalendarHeight);
+    makeStretchable(m_monthWindow);
     m_monthWindow->setFirstWeekday(DDE25::fromGxdeWeekday(weekday));
     m_monthWindow->setCurrentDate(QDate::currentDate());
     m_monthWindow->setTheMe(DDE25::themeType());
 
     // 周视图同样换成移植自 dde-calendar 的 CWeekWindow
     m_weekWindow = new CWeekWindow;
-    m_weekWindow->setFixedSize(CalendarWidth, CalendarHeight);
+    makeStretchable(m_weekWindow);
     m_weekWindow->setFirstWeekday(DDE25::fromGxdeWeekday(weekday));
     m_weekWindow->setCurrentDate(QDate::currentDate());
     m_weekWindow->setTheMe(DDE25::themeType());
 
     // 日视图同样换成移植自 dde-calendar 的 CDayWindow
     m_dayWindow = new CDayWindow;
-    m_dayWindow->setFixedSize(CalendarWidth, CalendarHeight);
+    makeStretchable(m_dayWindow);
     m_dayWindow->setFirstWeekday(DDE25::fromGxdeWeekday(weekday));
     m_dayWindow->setCurrentDate(QDate::currentDate());
     m_dayWindow->setTheMe(DDE25::themeType());
@@ -290,10 +296,18 @@ void CalendarWindow::initUI()
     m_dayView->hide();
 
     QHBoxLayout *dde25Layout = new QHBoxLayout(m_dde25Page);
-    dde25Layout->setContentsMargins(0, 0, 0, 0);
+    dde25Layout->setContentsMargins(0, 0, Dde25SidePadding, 0);
     dde25Layout->setSpacing(0);
     dde25Layout->addWidget(m_sidebarCalendar);
-    dde25Layout->addWidget(m_viewStack, 0, Qt::AlignHCenter);
+
+    m_sidebarSeparator = new QFrame(m_dde25Page);
+    m_sidebarSeparator->setObjectName("SidebarSeparator");
+    m_sidebarSeparator->setFixedWidth(1);
+    m_sidebarSeparator->setStyleSheet(DDE25::separatorStyleSheet());
+    dde25Layout->addWidget(m_sidebarSeparator);
+
+    dde25Layout->addSpacing(Dde25SidePadding);
+    dde25Layout->addWidget(m_viewStack, 1);
 
     // ---------------- Main stack ----------------
     m_mainStack = new QStackedWidget;
@@ -420,7 +434,6 @@ void CalendarWindow::setupMenu()
     DTitlebar *titlebar = this->titlebar();
 
     if (titlebar) {
-        titlebar->setWindowFlags(titlebar->windowFlags() & ~Qt::WindowMaximizeButtonHint);
         titlebar->setMenu(new QMenu(titlebar));
         titlebar->setSeparatorVisible(true);
 
@@ -532,17 +545,34 @@ void CalendarWindow::applyLayout() {
     m_viewSwitcher->setVisible(dde25);
     m_sidebarToggleButton->setVisible(dde25);
     m_sidebarCalendar->setVisible(dde25 && !m_sidebarCollapsed);
+    m_sidebarSeparator->setVisible(dde25 && !m_sidebarCollapsed);
 
     DTitlebar *titlebar = this->titlebar();
     const int titlebarHeight = titlebar ? titlebar->height() : 0;
-    // 窗口宽度不随侧边栏折叠变化：折叠时 dde25Layout 会把空出来的
-    // SidebarWidth 分给两侧，靠 m_viewStack 的 AlignHCenter 重新居中。
-    const int width = dde25
-        ? SidebarWidth + CalendarWidth
-        : CalendarWidth + ContentLeftRightPadding * 2;
-    const int contentHeight = dde25 ? CalendarHeight
-        : InfoViewHeight + CalendarHeight;
-    setFixedSize(width, contentHeight + titlebarHeight);
+
+    if (titlebar) {
+        // DDE 25 允许最大化；DDE 15 是固定尺寸的，最大化按钮没有意义
+        Qt::WindowFlags flags = titlebar->windowFlags();
+        if (dde25) {
+            flags |= Qt::WindowMaximizeButtonHint;
+        } else {
+            flags &= ~Qt::WindowMaximizeButtonHint;
+        }
+        titlebar->setWindowFlags(flags);
+    }
+
+    if (dde25) {
+        setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+        setMinimumSize(SidebarWidth + CalendarWidth + Dde25SidePadding * 2,
+            CalendarHeight + titlebarHeight);
+    } else {
+        if (isMaximized()) {
+            showNormal();
+        }
+        const int width = CalendarWidth + ContentLeftRightPadding * 2;
+        const int contentHeight = InfoViewHeight + CalendarHeight;
+        setFixedSize(width, contentHeight + titlebarHeight);
+    }
 
     updateLayoutActionText(dde25);
 }

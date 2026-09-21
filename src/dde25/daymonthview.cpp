@@ -71,7 +71,6 @@ void CDayMonthView::setLunarVisible(bool visible)
 {
     m_huanglistate = visible;
     m_currentLuna->setVisible(visible);
-    m_splitline->setVisible(visible);
     update();
 }
 
@@ -105,6 +104,7 @@ void CDayMonthView::setTheMe(int type)
         m_backgroundCircleColor = "#0081FF";
         m_weekendsTextColor = Qt::black;
         m_festivalTextColor = Qt::black;
+        m_splitline->setStyleSheet("background-color: rgba(0, 0, 0, 0.1);");
     } else if (type == 2) {
         QPalette aniPa = palette();
         const QColor tbColor = "#282828";
@@ -122,6 +122,7 @@ void CDayMonthView::setTheMe(int type)
         m_backgroundCircleColor = "#0059D2";
         m_weekendsTextColor = Qt::black;
         m_festivalTextColor = Qt::black;
+        m_splitline->setStyleSheet("background-color: rgba(255, 255, 255, 0.1);");
     }
     update();
 }
@@ -244,11 +245,10 @@ void CDayMonthView::initUI()
     m_hhLayout->addLayout(m_upLayout, 6);
     m_hhLayout->addLayout(midLayout);
 
-    // 参考实现的 DHorizontalLine：这里用 1px 的水平线代替
     m_splitline = new QFrame(this);
-    m_splitline->setFrameShape(QFrame::HLine);
-    m_splitline->setFrameShadow(QFrame::Plain);
-    m_splitline->setMinimumHeight(2);
+    m_splitline->setFrameShape(QFrame::NoFrame);
+    m_splitline->setFixedHeight(1);
+    m_splitline->setVisible(false);
 
     QHBoxLayout *hlineLayout = new QHBoxLayout;
     hlineLayout->setSpacing(0);

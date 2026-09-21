@@ -265,11 +265,11 @@ void CDayWindow::initUI()
     leftLayout->addLayout(titleLayout);
     leftLayout->addWidget(m_scheduleView);
 
-    // 参考实现的 DVerticalLine：这里用 2px 的竖线代替
     m_verline = new QFrame(this);
-    m_verline->setFrameShape(QFrame::VLine);
-    m_verline->setFrameShadow(QFrame::Plain);
-    m_verline->setFixedWidth(2);
+    m_verline->setObjectName("DayVerticalLine");
+    m_verline->setFrameShape(QFrame::NoFrame);
+    m_verline->setFixedWidth(1);
+    m_verline->setStyleSheet(DDE25::separatorStyleSheet());
 
     m_daymonthView = new CDayMonthView(this);
     m_daymonthView->setFirstWeekDay(m_firstWeekday);

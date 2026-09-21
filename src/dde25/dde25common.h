@@ -50,6 +50,12 @@ QColor systemActiveColor();
 // type 为 setTheMe 的主题类型：2 用白色描边，其余用深灰。
 QIcon navArrowIcon(bool next, int type);
 
+// 分栏之间 1px 分隔线的样式，取自 gxde-file-manager 主题里的 QSplitter::handle
+// （gxde-file-manager-lib/themes/{light,dark}/DFileManagerWindow.theme：
+//  background-color: rgba(0, 0, 0, 0.1); width/height: 1px; 深浅主题同值）。
+// 侧栏与 M/W/D 之间、日视图左右分栏之间都用它，配合 setFixedWidth/Height(1)。
+QString separatorStyleSheet();
+
 // gxde-calendar 的 Week 枚举（Monday = 6 … Sunday = 0）转成 Qt::DayOfWeek。
 Qt::DayOfWeek fromGxdeWeekday(int weekday);
 

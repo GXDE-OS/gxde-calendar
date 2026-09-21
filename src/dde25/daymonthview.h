@@ -21,14 +21,17 @@
  * ----------------------------------------------------------------------------
  * 移植自 dde-calendar（src/calendar-client/src/widget/dayWidget/daymonthview.*）。
  * 差异：
- *   1. DIconButton/CTodayButton/DHorizontalLine 换成 QToolButton/QPushButton/QFrame
- *      （本项目未引入 DtkWidget 头文件路径）。翻页箭头原本是 DIconButton 自带的
- *      DStyle::SP_ArrowLeft/Right，换成从 dde-calendar 那套 previous_/next_ 箭头抠出来的
- *      DDE25::navArrowIcon()（DTK 画的是 3px 实心箭头，太粗）。
- *   2. 黄历信息改用 gxde 农历服务已有的 CaLunarDayInfo；该服务不提供「宜/忌」数据，
+ *   1. DIconButton/CTodayButton 换成 QToolButton/QPushButton。翻页箭头原本是 DIconButton
+ *      自带的 DStyle::SP_ArrowLeft/Right，换成从 dde-calendar 那套 previous_/next_ 箭头
+ *      抠出来的 DDE25::navArrowIcon()（DTK 画的是 3px 实心箭头，太粗）。
+ *   2. DHorizontalLine 换成 QFrame，且恒为隐藏（下面没有宜/忌可分隔）。
+ *      dtk2 里 DHorizontalLine 在 dframe.h 而不是 <DFrame> 里（那个包装头和 dframe.h
+ *      共用 DFRAME_H 宏，include 等于没做），但实测它和 QFrame::HLine + Plain 画出来
+ *      逐像素相同，都是调色板正文色的实线，换不换都一样。
+ *   3. 黄历信息改用 gxde 农历服务已有的 CaLunarDayInfo；该服务不提供「宜/忌」数据，
  *      因此原实现的 m_yiLabel/m_jiLabel 及其下方的宜/忌区域整体不移植
  *      （dayhuangliview.* 与两个宜/忌图标也未引入）。
- *   3. 去掉搜索态与拖拽新建日程（本阶段无日程数据层）。
+ *   4. 去掉搜索态与拖拽新建日程（本阶段无日程数据层）。
  */
 
 #ifndef DAYMONTHVIEW_H

@@ -70,6 +70,7 @@ private:
     CalendarView * m_calendarView = nullptr;
     QFrame * m_contentBackground = nullptr;
     SidebarCalendarWidget * m_sidebarCalendar = nullptr;
+    QFrame *m_sidebarSeparator = nullptr;
 
     // DDE 25 styled
     QStackedWidget *m_mainStack = nullptr;

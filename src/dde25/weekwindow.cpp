@@ -226,8 +226,10 @@ void CWeekWindow::setTheMe(int type)
         QColor bColor = "#FFFFFF";
         bColor.setAlphaF(0.05);
         m_todayframe->setBColor(bColor);
+        m_todayframe->setBorderColor(QColor(0, 0, 0, 0));
     } else {
         m_todayframe->setBColor(Qt::white);
+        m_todayframe->setBorderColor(QColor(0, 0, 0, 0x1e));
     }
 
     m_weekview->setTheMe(type);

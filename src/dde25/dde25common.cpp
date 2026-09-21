@@ -48,6 +48,10 @@ QIcon navArrowIcon(bool next, int type) {
             type == 2 ? QStringLiteral("_dark") : QString()));
 }
 
+QString separatorStyleSheet() {
+    return QStringLiteral("background-color: rgba(0, 0, 0, 0.1);");
+}
+
 Qt::DayOfWeek fromGxdeWeekday(int weekday)
 {
     // gxde-calendar: Monday = 6 … Sunday = 0

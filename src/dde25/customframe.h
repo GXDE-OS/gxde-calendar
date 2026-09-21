@@ -28,6 +28,8 @@
 #include <QColor>
 #include <QFont>
 #include <QFrame>
+#include <QPainterPath>
+#include <QRectF>
 
 /**
  * @brief 可指定哪些角是圆角的填充框，dde-calendar 用它拼出头部/表头的圆角造型。
@@ -48,6 +50,11 @@ public:
     void setTextAlign(int flag = Qt::AlignCenter);
     void setRadius(int radius = 8);
     void setboreder(int framew = 0);
+    // 1px 圆角描边色，alpha 为 0 时不画（默认值），既有用法都不受影响。
+    // 加它是为了周视图周数条的外框（weekwindow 的 m_todayframe）能对齐月视图月份条
+    // 由 CMonthDayView::paintEvent 画出来的那个圆角外框——参考实现的 CustomFrame
+    // 本来就没有描边，只有 setBColor 的填充。
+    void setBorderColor(QColor borderC);
 
     QString getTextStr() { return m_text; }
 
@@ -57,8 +64,12 @@ protected:
     void paintEvent(QPaintEvent *e) override;
 
 private:
+    // 按四个角各自的圆角开关拼出边框路径
+    QPainterPath roundedPath(const QRectF &rect) const;
+
     QColor m_bnormalColor = "#FFFFFF";
     QColor m_tnormalColor = "#000000";
+    QColor m_borderColor = QColor(0, 0, 0, 0);
     QFont m_font;
     bool m_bflag = false;
     bool m_fixsizeflag = false;

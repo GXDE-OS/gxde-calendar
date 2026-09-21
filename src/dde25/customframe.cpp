@@ -104,6 +104,51 @@ void CustomFrame::setboreder(int framew)
     m_borderframew = framew;
 }
 
+void CustomFrame::setBorderColor(QColor borderC) {
+    m_borderColor = borderC;
+    update();
+}
+
+QPainterPath CustomFrame::roundedPath(const QRectF &rect) const {
+    const qreal l = rect.left();
+    const qreal t = rect.top();
+    const qreal r = rect.right();
+    const qreal b = rect.bottom();
+
+    QPainterPath painterPath;
+    painterPath.moveTo(l + m_radius, t);
+    if (m_lstate) {
+        painterPath.arcTo(QRectF(l, t, m_radius * 2, m_radius * 2), 90, 90);
+    } else {
+        painterPath.lineTo(l, t);
+        painterPath.lineTo(l, t + m_radius);
+    }
+    painterPath.lineTo(l, b - m_radius);
+    if (m_bstate) {
+        painterPath.arcTo(QRectF(l, b - m_radius * 2, m_radius * 2, m_radius * 2), 180, 90);
+    } else {
+        painterPath.lineTo(l, b);
+        painterPath.lineTo(l + m_radius, b);
+    }
+    painterPath.lineTo(r - m_radius, b);
+    if (m_rstate) {
+        painterPath.arcTo(QRectF(r - m_radius * 2, b - m_radius * 2, m_radius * 2, m_radius * 2), 270, 90);
+    } else {
+        painterPath.lineTo(r, b);
+        painterPath.lineTo(r, b - m_radius);
+    }
+    painterPath.lineTo(r, t + m_radius);
+    if (m_tstate) {
+        painterPath.arcTo(QRectF(r - m_radius * 2, t, m_radius * 2, m_radius * 2), 0, 90);
+    } else {
+        painterPath.lineTo(r, t);
+        painterPath.lineTo(r - m_radius, t);
+    }
+    painterPath.lineTo(l + m_radius, t);
+    painterPath.closeSubpath();
+    return painterPath;
+}
+
 void CustomFrame::setFixedSize(int w, int h)
 {
     m_fixsizeflag = true;
@@ -112,59 +157,33 @@ void CustomFrame::setFixedSize(int w, int h)
 
 void CustomFrame::paintEvent(QPaintEvent *e)
 {
-    const int labelwidth = width() - 2 * m_borderframew;
-    const int labelheight = height() - 2 * m_borderframew;
-
     QPainter painter(this);
-    const QRect fillRect(m_borderframew, m_borderframew, labelwidth, labelheight);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    const QRectF content = QRectF(rect()).adjusted(m_borderframew, m_borderframew,
+                                                   -m_borderframew, -m_borderframew);
 
     if (m_bflag) {
         painter.save();
-        painter.setRenderHint(QPainter::Antialiasing);
         painter.setBrush(QBrush(m_bnormalColor));
         painter.setPen(Qt::NoPen);
+        painter.drawPath(roundedPath(content));
+        painter.restore();
+    }
 
-        QPainterPath painterPath;
-        painterPath.moveTo(m_radius, m_borderframew);
-        if (m_lstate) {
-            painterPath.arcTo(QRect(m_borderframew, m_borderframew, m_radius * 2, m_radius * 2), 90, 90);
-        } else {
-            painterPath.lineTo(m_borderframew, m_borderframew);
-            painterPath.lineTo(m_borderframew, m_radius);
-        }
-        painterPath.lineTo(0, labelheight - m_radius);
-        if (m_bstate) {
-            painterPath.arcTo(QRect(m_borderframew, labelheight - m_radius * 2, m_radius * 2, m_radius * 2), 180, 90);
-        } else {
-            painterPath.lineTo(m_borderframew, labelheight);
-            painterPath.lineTo(m_radius, labelheight);
-        }
-        painterPath.lineTo(labelwidth - m_radius, labelheight);
-        if (m_rstate) {
-            painterPath.arcTo(QRect(labelwidth - m_radius * 2, labelheight - m_radius * 2, m_radius * 2, m_radius * 2), 270, 90);
-        } else {
-            painterPath.lineTo(labelwidth, labelheight);
-            painterPath.lineTo(labelwidth, labelheight - m_radius);
-        }
-        painterPath.lineTo(labelwidth, m_radius);
-        if (m_tstate) {
-            painterPath.arcTo(QRect(labelwidth - m_radius * 2, m_borderframew, m_radius * 2, m_radius * 2), 0, 90);
-        } else {
-            painterPath.lineTo(labelwidth, m_borderframew);
-            painterPath.lineTo(labelwidth - m_radius, m_borderframew);
-        }
-        painterPath.lineTo(m_radius, m_borderframew);
-        painterPath.closeSubpath();
-        painter.drawPath(painterPath);
+    if (m_borderColor.alpha() > 0) {
+        painter.save();
+        painter.setBrush(Qt::NoBrush);
+        painter.setPen(QPen(m_borderColor, 1));
+        painter.drawPath(roundedPath(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5)));
         painter.restore();
     }
 
     if (!m_text.isEmpty()) {
         painter.save();
-        painter.setRenderHint(QPainter::Antialiasing);
         painter.setFont(m_font);
         painter.setPen(m_tnormalColor);
-        painter.drawText(fillRect, m_textflag, m_text);
+        painter.drawText(content, m_textflag, m_text);
         painter.restore();
     }
 

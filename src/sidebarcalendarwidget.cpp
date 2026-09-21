@@ -158,7 +158,12 @@ void SidebarCalendarWidget::rebuildWeekHeader()
         if (d > 7)
             d -= 7;
 
-        QLabel *label = new QLabel(locale.dayName(d ? d : 7, QLocale::ShortFormat));
+        const int weekDay = d ? d : 7;
+        QString name = locale.dayName(weekDay, QLocale::NarrowFormat);
+        if (name.isEmpty()) {
+            name = locale.dayName(weekDay, QLocale::ShortFormat);
+        }
+        QLabel *label = new QLabel(name);
         label->setAlignment(Qt::AlignCenter);
         label->setFixedSize(WeekLabelWidth, WeekLabelHeight);
 
