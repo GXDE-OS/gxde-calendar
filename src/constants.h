@@ -34,6 +34,11 @@ namespace DDECalendar {
     static const int QueryEarliestYear = 1900;
     static const int QueryLatestYear = 2100;
 
+    // 新建/编辑日程弹窗里标签的固定宽度，取自 dde-calendar 的 constants.h
+    static const int NewScheduleLabelWidth = 70;
+    // 日程开始时间的量化粒度（分钟），新建时按它取整
+    static const int QuarterOfAnhourWithMinute = 15;
+
     static const int FontSizeEleven = 11;
     static const int FontSizeTwelve = 12;
     static const int FontSizeFourteen = 14;
@@ -64,6 +69,10 @@ namespace DDEMonthCalendar {
 
     static const int MWeekCellWidth = 120;
     static const int MWeekCellHeight = 54;
+
+    // 月视图里一行日程块的高度，对应 dde-calendar 的
+    // CMonthScheduleView::setallsize(..., itemHeight = 22)
+    static const int MonthScheduleItemHeight = 22;
 
     static const int MDayCellWidth = 36;
     static const int MDayCellHeight = 36;

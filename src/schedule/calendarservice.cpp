@@ -266,6 +266,21 @@ DTypeColor::List CalendarService::getSysColors()
     return m_db->getSysColor();
 }
 
+QString CalendarService::getLocalTypeID()
+{
+    return m_db->getLocalTypeID();
+}
+
+QString CalendarService::getFestivalTypeID()
+{
+    return m_db->getFestivalTypeID();
+}
+
+DSchedule::List CalendarService::getRemindSchedule()
+{
+    return m_db->getRemindSchedule();
+}
+
 ///////////////ICS：本地文件
 
 bool CalendarService::importSchedule(const QString &icsFilePath, const QString &typeID,

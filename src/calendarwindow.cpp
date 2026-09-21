@@ -28,6 +28,9 @@
 #include "dde25/monthwindow.h"
 #include "dde25/daywindow.h"
 #include "dde25/weekwindow.h"
+#include "dde25/scheduledlg.h"
+#include "dde25/sidebarschedulelist.h"
+#include "schedule/calendarservice.h"
 
 #include <QDate>
 #include <QVBoxLayout>
@@ -236,6 +239,40 @@ void CalendarWindow::initUI()
     });
     m_sidebarCollapsed = m_settings->value("sidebarCollapsed", false).toBool();
 
+    // 新建日程按钮，与侧边栏折叠按钮同一套样式，放在 Y/M/W/D 后面
+    m_newScheduleButton = new QPushButton;
+    m_newScheduleButton->setObjectName("NewScheduleButton");
+    // 图标取自 dde-calendar 的 dde_calendar_create 内置图标（本机没有图标主题，
+    // 已内置进 qrc）；深浅主题各一份，选法同 cpushbutton.cpp
+    m_newScheduleButton->setIcon(QIcon(DDE25::themeType() == 2
+                                           ? ":/resources/icon/dde_calendar_create_dark.svg"
+                                           : ":/resources/icon/dde_calendar_create_light.svg"));
+    m_newScheduleButton->setIconSize(QSize(16, 16));
+    m_newScheduleButton->setFixedSize(24, 24);
+    m_newScheduleButton->setToolTip(tr("New Schedule"));
+    m_newScheduleButton->setFocusPolicy(Qt::NoFocus);
+    m_newScheduleButton->setCursor(Qt::PointingHandCursor);
+    m_newScheduleButton->setStyleSheet(
+        "QPushButton#NewScheduleButton {"
+        "  background-color: white;"
+        "  border: 1px solid rgba(0, 0, 0, 0.1);"
+        "  border-radius: 4px;"
+        "}"
+        "QPushButton#NewScheduleButton:hover {"
+        "  background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
+        "    stop:0 #8CCFFF, stop:1 #4BB8FF);"
+        "  border: 1px solid #3caafd;"
+        "}"
+        "QPushButton#NewScheduleButton:pressed {"
+        "  background-color: #2ca7f8;"
+        "  border: 1px solid #1088ff;"
+        "}");
+    // 没有点具体位置时，就以当前选中日期 + 当前时刻（弹窗里会向上取整到
+    // 15 分钟）作为新建日程的默认时间
+    connect(m_newScheduleButton, &QPushButton::clicked, this, [this](bool) {
+        slotCreateSchedule(QDateTime(m_calendarView->currentDate(), QTime::currentTime()));
+    });
+
     m_viewStack = new QStackedWidget;
 
     const auto makeStretchable = [](QWidget *w) {
@@ -295,10 +332,32 @@ void CalendarWindow::initUI()
     m_dayView->setParent(m_dde25Page);
     m_dayView->hide();
 
+    // 侧栏整列：上半部分是「迷你月历上高亮那天」的日程列表，下半部分是迷你月历
+    // 本身（迷你月历自己的布局把内容顶到底部）。参考实现的侧栏是日历（账户/类型）
+    // 树 + 迷你月历，GXDE 日历这边把上半部分换成了当天日程列表。
+    m_sidebarScheduleList = new SidebarScheduleList;
+    m_sidebarScheduleList->setDate(QDate::currentDate());
+
+    m_sidebarContainer = new QWidget(m_dde25Page);
+    m_sidebarContainer->setObjectName("SidebarContainer");
+    m_sidebarContainer->setAttribute(Qt::WA_StyledBackground, true);
+    m_sidebarContainer->setStyleSheet(
+        "QWidget#SidebarContainer {"
+        "  background-color: #67f9f9fa;"
+        "  border: none;"
+        "}");
+    m_sidebarContainer->setFixedWidth(SidebarWidth);
+
+    QVBoxLayout *sidebarLayout = new QVBoxLayout(m_sidebarContainer);
+    sidebarLayout->setContentsMargins(0, 8, 0, 0);
+    sidebarLayout->setSpacing(0);
+    sidebarLayout->addWidget(m_sidebarScheduleList, 1);
+    sidebarLayout->addWidget(m_sidebarCalendar);
+
     QHBoxLayout *dde25Layout = new QHBoxLayout(m_dde25Page);
     dde25Layout->setContentsMargins(0, 0, Dde25SidePadding, 0);
     dde25Layout->setSpacing(0);
-    dde25Layout->addWidget(m_sidebarCalendar);
+    dde25Layout->addWidget(m_sidebarContainer);
 
     m_sidebarSeparator = new QFrame(m_dde25Page);
     m_sidebarSeparator->setObjectName("SidebarSeparator");
@@ -339,6 +398,8 @@ void CalendarWindow::initUI()
         m_infoView->setMonth(month);
         m_infoView->blockSignals(false);
         m_sidebarCalendar->setDate(m_calendarView->currentDate());
+        // 侧栏日程列表只认小日历上高亮的那天，跟着唯一日期源一起走
+        m_sidebarScheduleList->setDate(m_calendarView->currentDate());
         m_yearView->setCurrentDate(m_calendarView->currentDate());
         m_weekWindow->setCurrentDate(m_calendarView->currentDate());
         m_dayWindow->setCurrentDate(m_calendarView->currentDate());
@@ -354,6 +415,19 @@ void CalendarWindow::initUI()
     connect(m_monthWindow, &CMonthWindow::signalsCurrentDateChanged, this, [this](const QDate &date) {
         m_calendarView->setCurrentDate(date);
     });
+    // 新建/编辑日程：三个视图的入口最后都汇到这里，弹窗开在窗口上（不受视图切页影响）
+    connect(m_monthWindow, &CMonthWindow::signalCreateSchedule,
+            this, &CalendarWindow::slotCreateSchedule);
+    connect(m_monthWindow, &CMonthWindow::signalEditSchedule,
+            this, &CalendarWindow::slotEditSchedule);
+    connect(m_weekWindow, &CWeekWindow::signalCreateSchedule,
+            this, &CalendarWindow::slotCreateSchedule);
+    connect(m_weekWindow, &CWeekWindow::signalEditSchedule,
+            this, &CalendarWindow::slotEditSchedule);
+    connect(m_dayWindow, &CDayWindow::signalCreateSchedule,
+            this, &CalendarWindow::slotCreateSchedule);
+    connect(m_dayWindow, &CDayWindow::signalEditSchedule,
+            this, &CalendarWindow::slotEditSchedule);
     connect(m_weekWindow, &CWeekWindow::signalsCurrentDateChanged, this, [this](const QDate &date) {
         m_calendarView->setCurrentDate(date);
     });
@@ -383,6 +457,17 @@ void CalendarWindow::initUI()
     connect(m_sidebarCalendar, &SidebarCalendarWidget::monthChanged, this, [this](int year, int month) {
         handleCurrentYearMonthChanged(year, month);
     });
+
+    // 侧栏日程列表：日程增删改都发 scheduleUpdate()，重查一遍即可
+    connect(CalendarService::instance(), &CalendarService::scheduleUpdate,
+            m_sidebarScheduleList, &SidebarScheduleList::refresh);
+    connect(m_sidebarScheduleList, &SidebarScheduleList::signalEditSchedule,
+            this, &CalendarWindow::slotEditSchedule);
+    // 列表上的「+」按当前日期新建，时刻取当前时间（弹窗里会向上取整到 15 分钟）
+    connect(m_sidebarScheduleList, &SidebarScheduleList::signalCreateSchedule, this,
+            [this](const QDate &date) {
+                slotCreateSchedule(QDateTime(date, QTime::currentTime()));
+            });
 
     setupMenu();
     applyLayout();
@@ -462,6 +547,8 @@ void CalendarWindow::setupMenu()
         titleCenterLayout->addWidget(m_sidebarToggleButton, 0, Qt::AlignVCenter);
         titleCenterLayout->addSpacing(12);
         titleCenterLayout->addWidget(m_viewSwitcher, 0, Qt::AlignVCenter);
+        titleCenterLayout->addSpacing(8);
+        titleCenterLayout->addWidget(m_newScheduleButton, 0, Qt::AlignVCenter);
         titleCenterLayout->addStretch();
         titlebar->setCustomWidget(titleCenter, false);
 
@@ -543,7 +630,9 @@ void CalendarWindow::applyLayout() {
     m_mainStack->setCurrentIndex(dde25 ? 1 : 0);
 
     m_viewSwitcher->setVisible(dde25);
+    m_newScheduleButton->setVisible(dde25);
     m_sidebarToggleButton->setVisible(dde25);
+    m_sidebarContainer->setVisible(dde25 && !m_sidebarCollapsed);
     m_sidebarCalendar->setVisible(dde25 && !m_sidebarCollapsed);
     m_sidebarSeparator->setVisible(dde25 && !m_sidebarCollapsed);
 
@@ -672,6 +761,26 @@ void CalendarWindow::updateSentense() const
         senShow += "--" + m_sentenseData.at(3);
     }
     m_infoView->setSentense(senShow);
+}
+
+void CalendarWindow::slotCreateSchedule(const QDateTime &dateTime)
+{
+    // type = 1：新建（参考实现 Calendarmainwindow::slotNewSchedule）
+    CScheduleDlg scheduleDlg(1, this, false);
+    scheduleDlg.setDate(dateTime);
+    scheduleDlg.exec();
+}
+
+void CalendarWindow::slotEditSchedule(const DSchedule::Ptr &schedule)
+{
+    if (schedule.isNull()) {
+        return;
+    }
+
+    // type = 0：编辑（参考实现 DragInfoGraphicsView::contextMenuEvent 的编辑分支）
+    CScheduleDlg scheduleDlg(0, this, false);
+    scheduleDlg.setData(schedule);
+    scheduleDlg.exec();
 }
 
 void CalendarWindow::updateTime() const

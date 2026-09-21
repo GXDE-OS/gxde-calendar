@@ -2,6 +2,11 @@
     <qresource prefix="/">
         <file>resources/dde-calendar.qss</file>
         <file>resources/icon/dde_calendar_ban_32px.svg</file>
+        <!-- 取自 dde-calendar（src/calendar-client/assets/builtin/{dark,light}/icons/
+             dde_calendar_create_32px.svg），DTK 内置图标主题在本机没装，
+             直接内置进 qrc。深色/浅色各一份，用法见 cpushbutton.cpp。 -->
+        <file>resources/icon/dde_calendar_create_dark.svg</file>
+        <file>resources/icon/dde_calendar_create_light.svg</file>
         <file>resources/icon/dde_calendar_xiu.svg</file>
         <file>resources/icon/gxde-calendar.svg</file>
         <file>resources/icon/gxde-calendar_96.png</file>

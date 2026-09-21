@@ -358,7 +358,13 @@ DSchedule::List ScheduleDataBase::querySchedulesByKey(const QString &key)
             while (query.next()) {
                 DSchedule::Ptr schedule;
                 QString &&icsStr = query.value("ics").toString();
-                DSchedule::fromIcsString(schedule, icsStr);
+                // 同 getScheduleByScheduleID()：解析失败时 schedule 仍是空指针，
+                // 直接往下用就是空指针解引用，这里整行跳过。
+                if (!DSchedule::fromIcsString(schedule, icsStr) || schedule.isNull()) {
+                    qCWarning(ServiceLogger) << "Failed to parse schedule ICS:"
+                                             << query.value("scheduleID").toString();
+                    continue;
+                }
                 schedule->setScheduleTypeID(query.value("scheduleTypeID").toString());
                 scheduleList.append(schedule);
             }
@@ -518,7 +524,7 @@ DScheduleType::Ptr ScheduleDataBase::getScheduleTypeByID(const QString &typeID, 
                inner join typeColor tc on                               \
                    st.typeColorID = tc.ColorID                          \
                WHERE                                                    \
-                   st.typeID = ? AND st.isDeleteD = ?");
+                   st.typeID = ? AND st.isDeleted = ?");
     SqliteQuery query(m_database);
     if (query.prepare(strSql)) {
         query.addBindValue(typeID);
@@ -547,8 +553,6 @@ DScheduleType::Ptr ScheduleDataBase::getScheduleTypeByID(const QString &typeID, 
     } else {
         qCWarning(ServiceLogger) << query.lastError();
     }
-    query.addBindValue(typeID);
-    query.addBindValue(isDeleted);
 
     if (query.isActive()) {
         query.finish();

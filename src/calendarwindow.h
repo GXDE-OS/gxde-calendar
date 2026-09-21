@@ -26,11 +26,13 @@
 #include <QSettings>
 
 #include "calendarview.h"
+#include "schedule/dschedule.h"
 
 DWIDGET_USE_NAMESPACE
 
 class InfoView;
 class SidebarCalendarWidget;
+class SidebarScheduleList;
 class CMonthWindow;
 class CWeekWindow;
 class CDayWindow;
@@ -55,6 +57,11 @@ public slots:
     void previousMonth();
     void nextMonth();
 
+    // 新建日程：M/W/D 的右键、双击空白处与标题栏「新建日程」按钮都走这里
+    void slotCreateSchedule(const QDateTime &dateTime);
+    // 编辑日程：双击日程块
+    void slotEditSchedule(const DSchedule::Ptr &schedule);
+
 protected:
     void wheelEvent(QWheelEvent *);
 
@@ -70,6 +77,10 @@ private:
     CalendarView * m_calendarView = nullptr;
     QFrame * m_contentBackground = nullptr;
     SidebarCalendarWidget * m_sidebarCalendar = nullptr;
+    // 侧栏上半部分：小日历上高亮那天的日程列表（GXDE 日历原创，DDE 25 布局独有）
+    SidebarScheduleList *m_sidebarScheduleList = nullptr;
+    // 侧栏整列的容器：日程列表 + 迷你月历
+    QWidget *m_sidebarContainer = nullptr;
     QFrame *m_sidebarSeparator = nullptr;
 
     // DDE 25 styled
@@ -84,6 +95,7 @@ private:
     CWeekWindow *m_weekWindow = nullptr;
     CDayWindow *m_dayWindow = nullptr;
     ViewSwitcher *m_viewSwitcher = nullptr;
+    QPushButton *m_newScheduleButton = nullptr;
     QPushButton *m_sidebarToggleButton = nullptr;
     bool m_sidebarCollapsed = false;
     QVBoxLayout *m_dde15Layout = nullptr;

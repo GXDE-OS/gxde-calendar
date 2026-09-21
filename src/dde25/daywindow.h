@@ -29,7 +29,10 @@
 #define DAYWINDOW_H
 
 #include <QDate>
+#include <QDateTime>
 #include <QWidget>
+
+#include "schedule/dschedule.h"
 
 class CDayMonthView;
 class CScheduleBodyView;
@@ -61,6 +64,10 @@ public:
 signals:
     // 当前选中日期发生变化
     void signalsCurrentDateChanged(QDate date);
+    // 请求新建日程（日程区右键菜单 / 双击空白处）
+    void signalCreateSchedule(QDateTime dateTime);
+    // 请求编辑日程（双击日程块）
+    void signalEditSchedule(DSchedule::Ptr schedule);
 
 public slots:
     // 更新选择时间

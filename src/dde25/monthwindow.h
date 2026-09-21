@@ -32,6 +32,8 @@
 #include <QVector>
 #include <QWidget>
 
+#include "schedule/dschedule.h"
+
 class CMonthDayView;
 class CMonthView;
 class CustomFrame;
@@ -59,6 +61,10 @@ signals:
     void signalsSelectDate(QDate date);
     // 当前显示的月份发生变化
     void signalsCurrentDateChanged(QDate date);
+    // 请求新建日程（右键菜单 / 双击空白格）
+    void signalCreateSchedule(QDateTime dateTime);
+    // 请求编辑日程（双击日程块）
+    void signalEditSchedule(DSchedule::Ptr schedule);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;

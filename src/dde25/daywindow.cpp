@@ -28,7 +28,9 @@
 #include "customframe.h"
 #include "daymonthview.h"
 #include "dde25common.h"
+#include "schedule/calendarservice.h"
 #include "schedulebodyview.h"
+#include "schedulequery.h"
 #include "weekgraphicsview.h"
 
 #include <QHBoxLayout>
@@ -37,6 +39,7 @@
 #include <QLayout>
 #include <QLocale>
 #include <QResizeEvent>
+#include <QSet>
 #include <QVBoxLayout>
 
 CDayWindow::CDayWindow(QWidget *parent)
@@ -136,6 +139,20 @@ void CDayWindow::updateShowDate()
         monthDate.append(start.addDays(i));
     }
     m_daymonthView->setShowDate(monthDate, m_selectDate, m_currentDateTime.date());
+
+    // 日程区只画当天的
+    m_scheduleView->setScheduleInfo(DDE25::querySchedules(m_selectDate, m_selectDate));
+
+    // 迷你月历上「这天有日程」的小圆点。参考实现拿的是调度器里全局的
+    // getAllScheduleDate()，这里只要这 42 格，直接按区间查一次更省。
+    const QList<QDate> busy = DDE25::querySchedules(monthDate.first(), monthDate.last()).keys();
+    const QSet<QDate> busySet(busy.constBegin(), busy.constEnd());
+    QVector<bool> hasScheduleFlag;
+    hasScheduleFlag.reserve(monthDate.size());
+    for (const QDate &date : monthDate) {
+        hasScheduleFlag.append(busySet.contains(date));
+    }
+    m_daymonthView->setHasScheduleFlag(hasScheduleFlag);
 
     if (m_lunarVisible) {
         updateShowLunar();
@@ -309,6 +326,14 @@ void CDayWindow::initConnection()
             slotSwitchNextPage();
         }
     });
+    // 新建/编辑日程的入口往上抛给 CalendarWindow，弹窗由它统一负责
+    connect(m_scheduleView, &CScheduleBodyView::signalCreateSchedule,
+            this, &CDayWindow::signalCreateSchedule);
+    connect(m_scheduleView, &CScheduleBodyView::signalEditSchedule,
+            this, &CDayWindow::signalEditSchedule);
+    // 日程增删改都发 scheduleUpdate()，重查一遍就能刷新日程块和迷你月历的圆点
+    connect(CalendarService::instance(), &CalendarService::scheduleUpdate,
+            this, &CDayWindow::updateShowDate);
 }
 
 void CDayWindow::resizeEvent(QResizeEvent *event)

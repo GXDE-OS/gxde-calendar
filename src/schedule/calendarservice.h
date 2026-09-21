@@ -83,8 +83,28 @@ public:
     bool updateScheduleType(const DScheduleType::Ptr &scheduleType);
     bool deleteScheduleTypeByID(const QString &typeID);
 
+    /**
+     * @brief getLocalTypeID      本项目的默认本地日历（initSysType() 建的 Local 类型）
+     *
+     * 新建日程时没有指定日历就用它。
+     */
+    QString getLocalTypeID();
+
+    /**
+     * @brief getFestivalTypeID   节假日类型
+     */
+    QString getFestivalTypeID();
+
     ///////////////类型颜色
     DTypeColor::List getSysColors();
+
+    /**
+     * @brief getRemindSchedule    取出所有设了提醒的日程（isAlarm = 1）
+     *
+     * 返回的日程是从库里的 ics 串重建的，因此带着各自的 alarm offset。
+     * 提醒模块按它排定时器。
+     */
+    DSchedule::List getRemindSchedule();
 
     ///////////////ICS：本地文件
     /**

@@ -28,6 +28,8 @@
 #include "dde25common.h"
 #include "monthgraphicsview.h"
 #include "monthweekview.h"
+#include "schedule/calendarservice.h"
+#include "schedulequery.h"
 
 #include <QVBoxLayout>
 
@@ -43,6 +45,15 @@ CMonthView::CMonthView(QWidget *parent)
             this, &CMonthView::signalsViewSelectDate);
     connect(m_monthGraphicsView, &CMonthGraphicsview::signalAngleDelta,
             this, &CMonthView::signalAngleDelta);
+    connect(m_monthGraphicsView, &CMonthGraphicsview::signalCreateSchedule,
+            this, &CMonthView::signalCreateSchedule);
+    connect(m_monthGraphicsView, &CMonthGraphicsview::signalEditSchedule,
+            this, &CMonthView::signalEditSchedule);
+
+    // 视图自己订阅日程变化，省得 CalendarWindow/CMonthWindow 层层透传一个 setScheduleInfo。
+    // 增删改都走 scheduleUpdate()，重查一遍即可。
+    connect(CalendarService::instance(), &CalendarService::scheduleUpdate,
+            this, &CMonthView::refresh);
 
     m_mainLayout = new QVBoxLayout;
     m_mainLayout->setContentsMargins(0, 0, 0, 0);
@@ -126,7 +137,12 @@ void CMonthView::refresh()
         cache->ensureMonth(date.year(), date.month());
     }
 
+    // 先 setDate：它会按当前控件尺寸重算场景矩形，日程块要靠这个尺寸定位
     m_monthGraphicsView->setDate(dates);
+
+    // 查询只在这里做，不进 paintEvent。42 格的量级很小，放在 GUI 线程足够。
+    m_monthGraphicsView->setScheduleInfo(
+        DDE25::querySchedules(dates.first(), dates.last()));
 }
 
 void CMonthView::resizeEvent(QResizeEvent *event)

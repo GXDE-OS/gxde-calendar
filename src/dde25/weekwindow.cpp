@@ -27,7 +27,9 @@
 #include "constants.h"
 #include "customframe.h"
 #include "dde25common.h"
+#include "schedule/calendarservice.h"
 #include "schedulebodyview.h"
+#include "schedulequery.h"
 #include "weekgraphicsview.h"
 #include "weekheadview.h"
 #include "weeknumview.h"
@@ -162,6 +164,15 @@ CWeekWindow::CWeekWindow(QWidget *parent)
             slotNextWeek();
         }
     });
+    // 新建/编辑日程的入口往上抛给 CalendarWindow，弹窗由它统一负责
+    connect(m_weekBody, &CScheduleBodyView::signalCreateSchedule,
+            this, &CWeekWindow::signalCreateSchedule);
+    connect(m_weekBody, &CScheduleBodyView::signalEditSchedule,
+            this, &CWeekWindow::signalEditSchedule);
+
+    // 日程增删改都发 scheduleUpdate()，重查一遍就能刷新日程块
+    connect(CalendarService::instance(), &CalendarService::scheduleUpdate,
+            this, &CWeekWindow::updateShowDate);
 
     setTheMe(DDE25::themeType());
     setCurrentDate(QDate::currentDate());
@@ -283,6 +294,9 @@ void CWeekWindow::updateShowDate()
     m_weekHeadView->updateLunar();
 
     m_weekBody->setRange(m_startDate, m_endDate);
+
+    // 查询只在这里做，不进 paintEvent
+    m_weekBody->setScheduleInfo(DDE25::querySchedules(m_startDate, m_endDate));
 }
 
 void CWeekWindow::switchDate(const QDate &date)

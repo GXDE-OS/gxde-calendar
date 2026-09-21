@@ -27,8 +27,13 @@
 #include "cmonthdayitem.h"
 #include "constants.h"
 #include "dde25common.h"
+#include "cmonthscheduleitem.h"
+#include "cmonthschedulenumitem.h"
+#include "schedulelayout.h"
 
 #include <QApplication>
+#include <QContextMenuEvent>
+#include <QMenu>
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QPainter>
@@ -97,6 +102,8 @@ void CMonthGraphicsview::setDate(const QVector<QDate> &showDate)
         return;
     }
 
+    m_showDates = showDate;
+
     const int currentMonth = showDate.at(0).day() != 1
         ? showDate.at(0).addMonths(1).month()
         : showDate.at(0).month();
@@ -108,6 +115,14 @@ void CMonthGraphicsview::setDate(const QVector<QDate> &showDate)
 
     updateLunar();
     updateSize();
+    updateScheduleItems();
+    scene()->update();
+}
+
+void CMonthGraphicsview::setScheduleInfo(const QMap<QDate, DSchedule::List> &scheduleInfo)
+{
+    m_scheduleInfo = scheduleInfo;
+    updateScheduleItems();
     scene()->update();
 }
 
@@ -156,6 +171,66 @@ void CMonthGraphicsview::updateLunar()
     }
 }
 
+void CMonthGraphicsview::clearScheduleItems()
+{
+    for (QGraphicsItem *item : m_scheduleItems) {
+        if (scene()) {
+            scene()->removeItem(item);
+        }
+        delete item;
+    }
+    m_scheduleItems.clear();
+}
+
+void CMonthGraphicsview::updateScheduleItems()
+{
+    clearScheduleItems();
+
+    if (!scene() || m_showDates.isEmpty()
+        || m_showDates.size() != DDEMonthCalendar::ItemSizeOfMonthDay) {
+        return;
+    }
+
+    const int sceneW = static_cast<int>(m_Scene->width());
+    const int sceneH = static_cast<int>(m_Scene->height());
+    if (sceneW <= 0 || sceneH <= 0) {
+        return;
+    }
+
+    const int itemHeight = DDEMonthCalendar::MonthScheduleItemHeight;
+    const QVector<DDE25::MonthBlock> blocks =
+        DDE25::layoutMonthBlocks(m_scheduleInfo, m_showDates.first(), sceneW, sceneH, itemHeight);
+
+    for (const DDE25::MonthBlock &block : blocks) {
+        if (block.isMore) {
+            CMonthScheduleNumItem *numItem = new CMonthScheduleNumItem();
+            // 背景透明、文字用中性灰，跟参考实现一致
+            QColor gradient("#000000");
+            gradient.setAlphaF(0.00);
+            numItem->setColor(gradient, gradient);
+            QColor textColor(DDE25::themeType() == 2 ? "#FFFFFF" : "#5E5E5E");
+            textColor.setAlphaF(0.9);
+            numItem->setText(textColor, font());
+            numItem->setData(block.moreCount);
+            numItem->setRect(block.rect);
+            numItem->setDate(block.date);
+            m_Scene->addItem(numItem);
+            m_scheduleItems.append(numItem);
+            continue;
+        }
+
+        if (block.schedule.isNull()) {
+            continue;
+        }
+
+        CMonthScheduleItem *item = new CMonthScheduleItem(block.rect);
+        item->setData(block.schedule);
+        item->setDate(block.date);
+        m_Scene->addItem(item);
+        m_scheduleItems.append(item);
+    }
+}
+
 void CMonthGraphicsview::wheelEvent(QWheelEvent *event)
 {
     // 参考实现：滚动为上下则发送信号用于翻月
@@ -168,6 +243,14 @@ void CMonthGraphicsview::resizeEvent(QResizeEvent *event)
 {
     QGraphicsView::resizeEvent(event);
     updateSize();
+    // 日程块的矩形是按场景尺寸算的，尺寸一变就得重排。
+    // 启动时视图还拿着 viewport 的默认尺寸（100x30），构造期的 refresh() 在这个
+    // 尺寸下算出来 0 块（每格减掉日期头之后放不下一行日程），而月视图的日程数据
+    // 是同步查出来的、不会再自己来一次；不在 resize 时补这一下的话，重开应用后
+    // 月视图就一条日程都不显示，要等切月或增删日程触发的下一次 refresh() 才出来。
+    // 参考实现是异步（DBus）取数据，首次 setScheduleInfo 落在窗口布局完成之后，
+    // 所以那边不需要这一步。
+    updateScheduleItems();
 }
 
 void CMonthGraphicsview::paintEvent(QPaintEvent *event)
@@ -203,12 +286,65 @@ void CMonthGraphicsview::paintEvent(QPaintEvent *event)
 
 void CMonthGraphicsview::mousePressEvent(QMouseEvent *event)
 {
-    const QPointF scenePos = mapToScene(event->pos());
-    for (CMonthDayItem *item : m_DayItem) {
-        if (item->rect().contains(scenePos) && item->getDate().isValid()) {
-            emit signalsViewSelectDate(item->getDate());
-            break;
-        }
+    const QDate date = dateAt(mapToScene(event->pos()));
+    if (date.isValid()) {
+        emit signalsViewSelectDate(date);
     }
     QGraphicsView::mousePressEvent(event);
+}
+
+void CMonthGraphicsview::mouseDoubleClickEvent(QMouseEvent *event)
+{
+    // 双击日程块 -> 编辑；双击空白格 -> 新建
+    if (CMonthScheduleItem *item = scheduleItemAt(event->pos())) {
+        emit signalEditSchedule(item->getData());
+        event->accept();
+        return;
+    }
+
+    const QDate date = dateAt(mapToScene(event->pos()));
+    if (date.isValid()) {
+        emit signalCreateSchedule(QDateTime(date, QTime(0, 0)));
+        event->accept();
+        return;
+    }
+
+    QGraphicsView::mouseDoubleClickEvent(event);
+}
+
+void CMonthGraphicsview::contextMenuEvent(QContextMenuEvent *event)
+{
+    const QDate date = dateAt(mapToScene(event->pos()));
+    if (!date.isValid()) {
+        QGraphicsView::contextMenuEvent(event);
+        return;
+    }
+
+    popupMenu(event->globalPos(), date);
+    event->accept();
+}
+
+QDate CMonthGraphicsview::dateAt(const QPointF &scenePos) const
+{
+    for (CMonthDayItem *item : m_DayItem) {
+        if (item->rect().contains(scenePos) && item->getDate().isValid()) {
+            return item->getDate();
+        }
+    }
+    return QDate();
+}
+
+CMonthScheduleItem *CMonthGraphicsview::scheduleItemAt(const QPoint &viewPos) const
+{
+    // 格子背景项、农历项都不是日程块，dynamic_cast 失败自然返回 nullptr
+    return dynamic_cast<CMonthScheduleItem *>(itemAt(viewPos));
+}
+
+void CMonthGraphicsview::popupMenu(const QPoint &globalPos, const QDate &date)
+{
+    QMenu menu(this);
+    menu.addAction(tr("New Schedule"), this, [this, date] {
+        emit signalCreateSchedule(QDateTime(date, QTime(0, 0)));
+    });
+    menu.exec(globalPos);
 }

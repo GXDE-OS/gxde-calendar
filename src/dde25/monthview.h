@@ -27,9 +27,12 @@
 #define MONTHVIEW_H
 
 #include <QDate>
+#include <QDateTime>
 #include <QMap>
 #include <QVector>
 #include <QWidget>
+
+#include "schedule/dschedule.h"
 
 class CMonthWeekView;
 class CMonthGraphicsview;
@@ -60,6 +63,10 @@ signals:
     void signalsViewSelectDate(QDate date);
     // 滚动相对量
     void signalAngleDelta(int delta);
+    // 请求新建日程（右键菜单 / 双击空白格）
+    void signalCreateSchedule(QDateTime dateTime);
+    // 请求编辑日程（双击日程块）
+    void signalEditSchedule(DSchedule::Ptr schedule);
 
 protected:
     void resizeEvent(QResizeEvent *event) override;

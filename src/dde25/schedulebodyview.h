@@ -21,7 +21,7 @@
  * ----------------------------------------------------------------------------
  * 移植自 dde-calendar（src/calendar-client/src/customWidget/scheduleview.* 的绘制部分）。
  * 周视图与日视图共用同一个日程区（对应参考实现的 CScheduleView）。
- * 差异：Stage 1 不含日程数据，因此只有左侧时间栏 + 整点网格 + 全天区占位。
+ * 差异：参考实现同时继承了拖拽改期、详情面板、搜索那一整套，这里只保留绘制。
  */
 
 #ifndef SCHEDULEBODYVIEW_H
@@ -29,14 +29,18 @@
 
 #include <QDate>
 #include <QFrame>
+#include <QMap>
 #include <QVector>
 #include <QWidget>
 
+#include "schedule/dschedule.h"
 #include "weekgraphicsview.h"
+
+class CAllDayView;
 
 /**
  * @brief The CScheduleBodyView class
- * 日程区外框：左侧整点时间栏 + 全天区 + 时间网格（CWeekGraphicsView）
+ * 日程区外框：左侧整点时间栏 + 全天区（CAllDayView） + 时间网格（CWeekGraphicsView）
  */
 class CScheduleBodyView : public QFrame
 {
@@ -53,9 +57,15 @@ public:
     void setTimeFormat(const QString &timeFormat);
     // 设置当前时间，用于绘制当前时刻线
     void setCurrentDate(const QDateTime &currentDate);
+    // 设置要绘制的日程（按天分组，数据层已经展开好重复日程）
+    void setScheduleInfo(const QMap<QDate, DSchedule::List> &scheduleInfo);
 
 signals:
     void signalAngleDelta(int delta);
+    // 请求新建日程（时间网格或全天区右键菜单 / 双击空白处）
+    void signalCreateSchedule(QDateTime dateTime);
+    // 请求编辑日程（双击日程块）
+    void signalEditSchedule(DSchedule::Ptr schedule);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -64,13 +74,21 @@ protected:
 
 private slots:
     void slotPosHours(QVector<int> vPos, QVector<int> vHours, int currentTimeType);
+    // 全天区的行数变了，它自己算好高度报过来，这里只负责挪标签和分隔线
+    void slotUpdateAlldayPaint(int topM);
 
 private:
     // 日程区（时间网格）应有的高度，与 dde-calendar 的算法一致
     int scheduleViewHeight();
+    // 按当前尺寸算出并排上限/最短时长，再把这些和范围一起推给网格视图
+    void syncGraphicsViewRange();
 
     CWeekGraphicsView *m_graphicsView = nullptr;
-    QWidget *m_allDayBand = nullptr;
+    CAllDayView *m_allDayView = nullptr;
+    // 参考实现 CScheduleView::m_sMaxNum
+    int m_sMaxNum = 4;
+    // 日程区（不含左侧时间栏）的宽度，setRange 与 resizeEvent 都往这里写
+    int m_viewWidth = 0;
     QVector<int> m_vPos;
     QVector<int> m_vHours;
     int m_leftMargin = 75;

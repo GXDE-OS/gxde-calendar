@@ -110,6 +110,10 @@ CMonthWindow::CMonthWindow(QWidget *parent)
     connect(m_monthDayView, &CMonthDayView::signalAngleDelta, this, angleDeltaToSlide);
     connect(m_monthView, &CMonthView::signalsViewSelectDate, this, &CMonthWindow::signalsSelectDate);
     connect(m_monthView, &CMonthView::signalAngleDelta, this, angleDeltaToSlide);
+    connect(m_monthView, &CMonthView::signalCreateSchedule,
+            this, &CMonthWindow::signalCreateSchedule);
+    connect(m_monthView, &CMonthView::signalEditSchedule,
+            this, &CMonthWindow::signalEditSchedule);
     connect(m_today, &QPushButton::clicked, this, [this] {
         setCurrentDate(QDate::currentDate());
     });

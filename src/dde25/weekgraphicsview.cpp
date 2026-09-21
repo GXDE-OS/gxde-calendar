@@ -28,17 +28,31 @@
 #include "constants.h"
 #include "cweekdaybackgrounditem.h"
 #include "dde25common.h"
+#include "schedulecoormanage.h"
+#include "scheduleitem.h"
+#include "schedulelayout.h"
 
 #include <QApplication>
+#include <QContextMenuEvent>
+#include <QMenu>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QResizeEvent>
 #include <QScrollBar>
 #include <QtMath>
 
+#include <algorithm>
+
+// 参考实现把 CScheduleCoorManage::getDrawRegion 的 type 参数传成 m_viewType。
+// 那个枚举是 ALLDayView = 0 / PartTimeView = 1，而网格视图（CGraphicsView）
+// 构造时写死 PartTimeView，所以这里恒传 1——跟线上行为一致，不用再去猜 0 的分支。
+static const int PartTimeViewType = 1;
+
 CWeekGraphicsView::CWeekGraphicsView(QWidget *parent, ViewPosition viewPos)
     : QGraphicsView(parent)
     , m_viewPos(viewPos)
     , m_Scene(new QGraphicsScene(this))
+    , m_coorManage(new CScheduleCoorManage)
 {
     setScene(m_Scene);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -83,7 +97,7 @@ void CWeekGraphicsView::createBackgroundItem()
     }
 }
 
-void CWeekGraphicsView::setRange(int w, int h, QDate begindate, QDate enddate)
+void CWeekGraphicsView::setRange(int w, int h, QDate begindate, QDate enddate, int rightmagin)
 {
     if (w <= 0 || h <= 0) {
         return;
@@ -92,7 +106,10 @@ void CWeekGraphicsView::setRange(int w, int h, QDate begindate, QDate enddate)
     m_endDate = enddate;
     setBackgroundDate();
     setSceneRect(0, 0, w, h);
+    m_coorManage->setRange(w, h, begindate, enddate, rightmagin);
     updateHourPos();
+    // 尺寸变了日程块的矩形也得跟着变
+    updateInfo();
 }
 
 void CWeekGraphicsView::setRange(QDate begin, QDate end)
@@ -100,7 +117,9 @@ void CWeekGraphicsView::setRange(QDate begin, QDate end)
     m_beginDate = begin;
     m_endDate = end;
     setBackgroundDate();
+    m_coorManage->setDateRange(begin, end);
     m_Scene->update();
+    updateInfo();
 }
 
 void CWeekGraphicsView::setBackgroundDate()
@@ -158,6 +177,117 @@ void CWeekGraphicsView::updateHeight()
     viewport()->update();
 }
 
+void CWeekGraphicsView::setInfo(const DSchedule::List &info)
+{
+    m_scheduleInfo = info;
+    updateInfo();
+}
+
+void CWeekGraphicsView::clearSchedule()
+{
+    for (CScheduleItem *item : m_vScheduleItem) {
+        if (m_Scene) {
+            m_Scene->removeItem(item);
+        }
+        delete item;
+    }
+    m_vScheduleItem.clear();
+}
+
+void CWeekGraphicsView::addScheduleItem(const DSchedule::Ptr &info, QDate date,
+                                        int index, int totalNum, int type)
+{
+    CScheduleItem *item = new CScheduleItem(
+        m_coorManage->getDrawRegion(date, info->dtStart(), info->dtEnd(),
+                                    index, totalNum, m_sMaxNum, PartTimeViewType),
+        nullptr, type);
+    if (type != 0) {
+        item->setItemType(CFocusItem::COTHER);
+    }
+    m_Scene->addItem(item);
+    item->setData(info, date, totalNum);
+    m_vScheduleItem.append(item);
+}
+
+/**
+ * @brief CWeekGraphicsView::updateInfo   重排定时日程块
+ *
+ * 对应参考实现的 CGraphicsView::upDateInfoShow。那边的日程是拖拽过程中
+ * 增删改之后增量刷新的（带 DragStatus），本项目只有「整批换掉」一种情形，
+ * 所以收成一个清空重排。
+ */
+void CWeekGraphicsView::updateInfo()
+{
+    clearSchedule();
+
+    if (!m_beginDate.isValid() || !m_endDate.isValid() || m_scheduleInfo.isEmpty()) {
+        if (m_Scene) {
+            m_Scene->update();
+        }
+        return;
+    }
+
+    const qint64 count = m_beginDate.daysTo(m_endDate);
+
+    for (int i = 0; i <= count; ++i) {
+        const QDate currentDate = m_beginDate.addDays(i);
+
+        // 挑出这一天要画的日程
+        DSchedule::List currentInfo;
+        for (const DSchedule::Ptr &ptr : m_scheduleInfo) {
+            if (ptr.isNull()) {
+                continue;
+            }
+            const qint64 beginoffset = ptr->dtStart().date().daysTo(currentDate);
+            const qint64 endoffset = currentDate.daysTo(ptr->dtEnd().date());
+            if (beginoffset < 0 || endoffset < 0) {
+                continue;
+            }
+            // 跨天日程在结束日的零点就已经结束了，那一天不画
+            if (ptr->dtEnd().date() == currentDate
+                && ptr->dtStart().daysTo(ptr->dtEnd()) > 0
+                && ptr->dtEnd().time() == QTime(0, 0, 0)) {
+                continue;
+            }
+            currentInfo.append(ptr);
+        }
+        if (currentInfo.isEmpty()) {
+            continue;
+        }
+
+        // 时间上重叠的归成一组，组内在一列里并排
+        const QVector<DDE25::ScheduleCluster> clusters =
+            DDE25::classifyOverlaps(currentInfo, m_minTime);
+
+        for (const DDE25::ScheduleCluster &cluster : clusters) {
+            const int tNum = cluster.members.size();
+
+            if (m_viewPos == WeekPos && tNum > m_sMaxNum) {
+                // 周视图一列很窄，超过上限就只画前几条，末尾收一个「...」
+                for (int n = 0; n < m_sMaxNum - 1; ++n) {
+                    addScheduleItem(cluster.members.at(n), currentDate,
+                                    n + 1, m_sMaxNum, 0);
+                }
+                // 占位块借一份日程的样式来画，颜色走的「other」中性色
+                int index = m_sMaxNum - 2;
+                if (index < 0) {
+                    index = 1;
+                }
+                DSchedule::Ptr detail(cluster.members.at(index)->clone());
+                detail->setSummary("1");
+                detail->setScheduleTypeID("other");
+                addScheduleItem(detail, currentDate, m_sMaxNum, m_sMaxNum, 1);
+            } else {
+                for (int n = 0; n < tNum; ++n) {
+                    addScheduleItem(cluster.members.at(n), currentDate, n + 1, tNum, 0);
+                }
+            }
+        }
+    }
+
+    m_Scene->update();
+}
+
 void CWeekGraphicsView::resizeEvent(QResizeEvent *event)
 {
     QGraphicsView::resizeEvent(event);
@@ -213,6 +343,62 @@ void CWeekGraphicsView::updateHourPos()
     emit signalsPosHours(m_vLRLarge, m_vHours, m_currentTimeType);
     m_Scene->update();
     viewport()->update();
+}
+
+DSchedule::Ptr CWeekGraphicsView::scheduleAt(const QPoint &viewPos) const
+{
+    CScheduleItem *item = dynamic_cast<CScheduleItem *>(itemAt(viewPos));
+    return item == nullptr ? DSchedule::Ptr() : item->getData();
+}
+
+QDateTime CWeekGraphicsView::scheduleDateTimeAt(const QPoint &viewPos) const
+{
+    // 没设过范围（m_coorManage 里的日期还是无效值）时不能反查，会算出无意义的时间
+    if (!m_coorManage->getBegindate().isValid()) {
+        return QDateTime();
+    }
+    return m_coorManage->getDate(mapToScene(viewPos));
+}
+
+void CWeekGraphicsView::mouseDoubleClickEvent(QMouseEvent *event)
+{
+    // 双击日程块 -> 编辑；双击空白处 -> 按点击位置的时间新建
+    const DSchedule::Ptr schedule = scheduleAt(event->pos());
+    if (!schedule.isNull()) {
+        emit signalEditSchedule(schedule);
+        event->accept();
+        return;
+    }
+
+    const QDateTime dateTime = scheduleDateTimeAt(event->pos());
+    if (dateTime.isValid()) {
+        emit signalCreateSchedule(dateTime);
+        event->accept();
+        return;
+    }
+
+    QGraphicsView::mouseDoubleClickEvent(event);
+}
+
+void CWeekGraphicsView::contextMenuEvent(QContextMenuEvent *event)
+{
+    const QDateTime dateTime = scheduleDateTimeAt(event->pos());
+    if (!dateTime.isValid()) {
+        QGraphicsView::contextMenuEvent(event);
+        return;
+    }
+
+    popupMenu(event->globalPos(), dateTime);
+    event->accept();
+}
+
+void CWeekGraphicsView::popupMenu(const QPoint &globalPos, const QDateTime &dateTime)
+{
+    QMenu menu(this);
+    menu.addAction(tr("New Schedule"), this, [this, dateTime] {
+        emit signalCreateSchedule(dateTime);
+    });
+    menu.exec(globalPos);
 }
 
 void CWeekGraphicsView::paintEvent(QPaintEvent *event)
