@@ -64,8 +64,10 @@ signals:
     void signalAngleDelta(int delta);
     // 请求新建日程（时间网格或全天区右键菜单 / 双击空白处）
     void signalCreateSchedule(QDateTime dateTime);
-    // 请求编辑日程（双击日程块）
+    // 请求编辑日程（双击日程块 / 右键菜单「编辑」）
     void signalEditSchedule(DSchedule::Ptr schedule);
+    // 请求删除日程（右键菜单「删除」）
+    void signalDeleteSchedule(DSchedule::Ptr schedule);
 
 protected:
     void paintEvent(QPaintEvent *event) override;

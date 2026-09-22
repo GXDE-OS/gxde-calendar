@@ -424,34 +424,6 @@ DSchedule::List ScheduleDataBase::querySchedulesByRRule(const QString &key, cons
     return scheduleList;
 }
 
-DSchedule::List ScheduleDataBase::getRemindSchedule()
-{
-    QString strSql("SELECT  scheduleID, scheduleTypeID, summary, description, allDay, dtStart, dtEnd, isAlarm,  \
-                   titlePinyin, isLunar, ics, fileName, dtCreate, dtUpdate, dtDelete, isDeleted                 \
-                   FROM schedules WHERE  isAlarm =1;");
-    SqliteQuery query(m_database);
-    DSchedule::List scheduleList;
-    if (query.prepare(strSql)) {
-        if (query.exec()) {
-            while (query.next()) {
-                DSchedule::Ptr schedule = DSchedule::Ptr(new DSchedule);
-                QString &&icsStr = query.value("ics").toString();
-                DSchedule::fromIcsString(schedule, icsStr);
-                scheduleList.append(schedule);
-            }
-        } else {
-            qCWarning(ServiceLogger) << Q_FUNC_INFO << query.lastError();
-        }
-    } else {
-        qCWarning(ServiceLogger) << Q_FUNC_INFO << query.lastError();
-    }
-
-    if (query.isActive()) {
-        query.finish();
-    }
-    return scheduleList;
-}
-
 void ScheduleDataBase::initDBData()
 {
     //如果不存在对应的数据库则创建

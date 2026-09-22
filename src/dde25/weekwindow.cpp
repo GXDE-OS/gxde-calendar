@@ -150,25 +150,23 @@ CWeekWindow::CWeekWindow(QWidget *parent)
         switchDate(date);
         emit signalsSelectDate(date);
     });
-    connect(m_weekHeadView, &CWeekHeadView::signalAngleDelta, this, [this](int delta) {
-        if (delta > 0) {
-            slotPrevWeek();
-        } else if (delta < 0) {
-            slotNextWeek();
-        }
-    });
-    connect(m_weekBody, &CScheduleBodyView::signalAngleDelta, this, [this](int delta) {
-        if (delta > 0) {
-            slotPrevWeek();
-        } else if (delta < 0) {
-            slotNextWeek();
-        }
-    });
+    // 滚轮：delta > 0 为上一周，< 0 为下一周。连续滚动按累计周数一次跳到位
+    m_wheelStepper = std::make_unique<DDE25::WheelStepper>(
+        [this](int steps) {
+            setCurrentDate(m_currentDate.addDays(-steps * DDEWeekCalendar::AFewDaysofWeek));
+        },
+        DDE25::kWheelCooldownMs);
+    const auto angleDeltaToSlide = [this](int delta) { m_wheelStepper->step(delta); };
+    connect(m_weekview, &CWeekView::signalAngleDelta, this, angleDeltaToSlide);
+    connect(m_weekHeadView, &CWeekHeadView::signalAngleDelta, this, angleDeltaToSlide);
+    connect(m_weekBody, &CScheduleBodyView::signalAngleDelta, this, angleDeltaToSlide);
     // 新建/编辑日程的入口往上抛给 CalendarWindow，弹窗由它统一负责
     connect(m_weekBody, &CScheduleBodyView::signalCreateSchedule,
             this, &CWeekWindow::signalCreateSchedule);
     connect(m_weekBody, &CScheduleBodyView::signalEditSchedule,
             this, &CWeekWindow::signalEditSchedule);
+    connect(m_weekBody, &CScheduleBodyView::signalDeleteSchedule,
+            this, &CWeekWindow::signalDeleteSchedule);
 
     // 日程增删改都发 scheduleUpdate()，重查一遍就能刷新日程块
     connect(CalendarService::instance(), &CalendarService::scheduleUpdate,
@@ -185,13 +183,43 @@ void CWeekWindow::setCurrentDate(const QDate &date)
     if (!date.isValid()) {
         return;
     }
+
+    // 日期没变就不重建，理由同 CMonthWindow::setCurrentDate
+    if (date == m_currentDate) {
+        return;
+    }
+
     m_currentDate = date;
+    // 隐藏时只记日期，显示出来再重建，理由同 CMonthWindow::setCurrentDate
+    if (isVisible()) {
+        refreshCurrentDate();
+    } else {
+        m_dateRefreshPending = true;
+    }
+
+    emit signalsCurrentDateChanged(m_currentDate);
+}
+
+/**
+ * @brief CWeekWindow::refreshCurrentDate  按 m_currentDate 重建各子控件
+ */
+void CWeekWindow::refreshCurrentDate()
+{
+    m_dateRefreshPending = false;
     updateShowDate();
     m_weekview->setCurrent(QDateTime::currentDateTime());
-    m_weekview->setSelectDate(date);
+    m_weekview->setSelectDate(m_currentDate);
     setYearData();
     updateLunarYearLabel();
-    emit signalsCurrentDateChanged(m_currentDate);
+}
+
+void CWeekWindow::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+
+    if (m_dateRefreshPending) {
+        refreshCurrentDate();
+    }
 }
 
 void CWeekWindow::setCurrentDateTime(const QDateTime &currentDate) {
@@ -328,11 +356,12 @@ void CWeekWindow::slotWeekNumSelectDate(const QDate &date)
 void CWeekWindow::keyPressEvent(QKeyEvent *event)
 {
     switch (event->key()) {
+    // 键盘连发也走节流：+1 = 滚轮向上 = 上一周
     case Qt::Key_Left:
-        slotPrevWeek();
+        m_wheelStepper->nudge(1);
         break;
     case Qt::Key_Right:
-        slotNextWeek();
+        m_wheelStepper->nudge(-1);
         break;
     default:
         QWidget::keyPressEvent(event);

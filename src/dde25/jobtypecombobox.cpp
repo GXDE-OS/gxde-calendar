@@ -74,6 +74,27 @@ void JobTypeComboBox::setCurrentJobTypeNo(const QString &strJobTypeNo)
     }
 }
 
+bool JobTypeComboBox::containsJobTypeNo(const QString &strJobTypeNo) const
+{
+    for (const DScheduleType::Ptr &type : m_lstJobType) {
+        if (!type.isNull() && strJobTypeNo == type->typeID()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void JobTypeComboBox::insertJobTypeItem(int idx, const DScheduleType::Ptr &type)
+{
+    if (type.isNull()) {
+        return;
+    }
+    //下拉项和 m_lstJobType 必须一一对应：getCurrentJobTypeNo() 就是拿 currentIndex()
+    //去取 m_lstJobType 的，所以 insertItem 之前得先把数据也插进去
+    m_lstJobType.insert(idx, type);
+    addJobTypeItem(idx, type->getColorCode(), type->displayName());
+}
+
 DLineEdit *JobTypeComboBox::alertLineEdit() const
 {
     return qobject_cast<DLineEdit *>(lineEdit());
@@ -134,7 +155,17 @@ void JobTypeComboBox::updateJobType()
     //保存现场
     bool isEnit = isEditable();
     QString text = currentText();
-    m_lstJobType = CalendarService::instance()->getScheduleTypeList();
+    //订阅日历不列出来：那是只读的远端日历，往里建的日程下一次刷新就被整批覆盖
+    //（参考实现同样把只读的 CalDAV 日历标成不可选；导入弹窗的目标日历也没列它们）。
+    //编辑订阅日程时弹窗本来就会置灰，类型那一项由 setData() 自己补进去
+    m_lstJobType.clear();
+    const DScheduleType::List allTypes = CalendarService::instance()->getScheduleTypeList();
+    for (const DScheduleType::Ptr &type : allTypes) {
+        if (!type.isNull()
+                && !CalendarService::instance()->isSubscriptionCalendar(type->typeID())) {
+            m_lstJobType.append(type);
+        }
+    }
     clear(); //更新前先清空原有列表
     for (m_itemNumIndex = 0; m_itemNumIndex < m_lstJobType.size(); m_itemNumIndex++) {
         addJobTypeItem(m_itemNumIndex, m_lstJobType[m_itemNumIndex]->getColorCode(), m_lstJobType[m_itemNumIndex]->displayName());

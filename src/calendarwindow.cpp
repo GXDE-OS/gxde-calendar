@@ -29,6 +29,7 @@
 #include "dde25/daywindow.h"
 #include "dde25/weekwindow.h"
 #include "dde25/scheduledlg.h"
+#include "dde25/schedulectrldlg.h"
 #include "dde25/sidebarschedulelist.h"
 #include "icssubscriptiondlg.h"
 #include "schedule/calendarservice.h"
@@ -65,6 +66,7 @@ static const int ViewSwitcherHeight = 24;
 static const int Dde25SidePadding = 16;
 
 static const int MinYearValue = 1900;
+static const int Dde15FlipAnimationMs = 300;
 
 enum ViewIndex {
     YearViewIndex = 0,
@@ -83,6 +85,10 @@ CalendarWindow::CalendarWindow() :
 
     initUI();
     initAnimation();
+    m_wheelStepper = std::make_unique<DDE25::WheelStepper>(
+        // 原实现：滚轮向下（delta < 0）翻下一个月，向上翻上一个月。
+        // step 传来的档数带 delta 的符号，slideMonth 正数才是下个月，所以这里取负
+        [this](int steps) { slideMonth(-steps); }, Dde15FlipAnimationMs);
     initDateChangeMonitor();
     initLunar();
 
@@ -116,23 +122,18 @@ void CalendarWindow::handleCurrentYearMonthChanged(int year, int month)
 
 void CalendarWindow::previousMonth()
 {
-    slideMonth(false);
+    slideMonth(-1);
 }
 
 void CalendarWindow::nextMonth()
 {
-    slideMonth(true);
+    slideMonth(1);
 }
 
 void CalendarWindow::wheelEvent(QWheelEvent * e)
 {
-    if (e->angleDelta().y() < 0) {
-        nextMonth();
-    } else {
-        if (m_infoView->year() > MinYearValue || m_infoView->month() != 1) {
-            previousMonth();
-        }
-    }
+    // 滚轮向下（delta < 0）往后翻。连续滚动累计后一次跳到位，见 DDE25::WheelStepper
+    m_wheelStepper->step(e->angleDelta().y());
 }
 
 void CalendarWindow::initUI()
@@ -416,19 +417,25 @@ void CalendarWindow::initUI()
     connect(m_monthWindow, &CMonthWindow::signalsCurrentDateChanged, this, [this](const QDate &date) {
         m_calendarView->setCurrentDate(date);
     });
-    // 新建/编辑日程：三个视图的入口最后都汇到这里，弹窗开在窗口上（不受视图切页影响）
+    // 新建/编辑/删除日程：三个视图的入口最后都汇到这里，弹窗开在窗口上（不受视图切页影响）
     connect(m_monthWindow, &CMonthWindow::signalCreateSchedule,
             this, &CalendarWindow::slotCreateSchedule);
     connect(m_monthWindow, &CMonthWindow::signalEditSchedule,
             this, &CalendarWindow::slotEditSchedule);
+    connect(m_monthWindow, &CMonthWindow::signalDeleteSchedule,
+            this, &CalendarWindow::slotDeleteSchedule);
     connect(m_weekWindow, &CWeekWindow::signalCreateSchedule,
             this, &CalendarWindow::slotCreateSchedule);
     connect(m_weekWindow, &CWeekWindow::signalEditSchedule,
             this, &CalendarWindow::slotEditSchedule);
+    connect(m_weekWindow, &CWeekWindow::signalDeleteSchedule,
+            this, &CalendarWindow::slotDeleteSchedule);
     connect(m_dayWindow, &CDayWindow::signalCreateSchedule,
             this, &CalendarWindow::slotCreateSchedule);
     connect(m_dayWindow, &CDayWindow::signalEditSchedule,
             this, &CalendarWindow::slotEditSchedule);
+    connect(m_dayWindow, &CDayWindow::signalDeleteSchedule,
+            this, &CalendarWindow::slotDeleteSchedule);
     connect(m_weekWindow, &CWeekWindow::signalsCurrentDateChanged, this, [this](const QDate &date) {
         m_calendarView->setCurrentDate(date);
     });
@@ -452,12 +459,14 @@ void CalendarWindow::initUI()
         handleCurrentYearMonthChanged(year, month);
     });
 
+    // 侧栏小日历只当「侧栏日程列表的日期选择器」用：点它只换侧栏列表，不动主视图。
+    // 以前是把日期灌进 m_calendarView，于是右边 M/W/D 会跟着跳到那一天；
+    // 反向（主视图动 → 小日历跟着走）仍然保留，见上面的 currentDateChanged 广播
     connect(m_sidebarCalendar, &SidebarCalendarWidget::dateClicked, this, [this](const QDate &date) {
-        m_calendarView->setCurrentDate(date);
+        m_sidebarScheduleList->setDate(date);
     });
-    connect(m_sidebarCalendar, &SidebarCalendarWidget::monthChanged, this, [this](int year, int month) {
-        handleCurrentYearMonthChanged(year, month);
-    });
+    // 小日历上的 ‹ › 只翻它自己显示的月份（控件内部自己处理），同样不动主视图，
+    // 所以 monthChanged 不接：主视图的月份仍然由 m_calendarView 那一路驱动
 
     // 侧栏日程列表：日程增删改都发 scheduleUpdate()，重查一遍即可
     connect(CalendarService::instance(), &CalendarService::scheduleUpdate,
@@ -716,16 +725,46 @@ void CalendarWindow::initLunar()
     m_dayWindow->setLunarVisible(lunarVisible);
 }
 
-void CalendarWindow::slideMonth(bool next)
+/**
+ * @brief CalendarWindow::slideMonth  翻月动画
+ * @param count 正数为往后翻 |count| 个月，负数为往前翻
+ *
+ * 一次翻多个月也只 grab 两次、只起一次动画：滚轮连发时按累计月数跳一次，
+ * 而不是每个档位都重新截图 + 起一次动画。
+ */
+void CalendarWindow::slideMonth(int count)
 {
+    if (count == 0) {
+        return;
+    }
+
+    const QDate current(m_infoView->year(), m_infoView->month(), 1);
+    QDate target = current.addMonths(count);
+    if (target.year() < MinYearValue) {
+        // 往前翻到头就停在最早的一年一月
+        target = QDate(MinYearValue, 1, 1);
+    }
+    if (target == current) {
+        return;
+    }
+
     m_animationContainer->show();
     m_animationContainer->raise();
 
     QPixmap one = getCalendarSnapshot();
-    m_infoView->increaseMonth(next);
+
+    // 直接把年月拨到目标月：上面那两个 signal 每个都会带回一次整屏刷新，
+    // 这里挡掉中间的过渡月份，只让 handleCurrentYearMonthChanged 触发一次切换
+    m_infoView->blockSignals(true);
+    m_infoView->setYear(target.year());
+    m_infoView->setMonth(target.month());
+    m_infoView->blockSignals(false);
+    handleCurrentYearMonthChanged(target.year(), target.month());
+
     QPixmap two = getCalendarSnapshot();
-    QPixmap target = next ? joint(one, two) : joint(two, one);
-    m_fakeContent->setPixmap(target);
+    const bool next = count > 0;
+    QPixmap pixmap = next ? joint(one, two) : joint(two, one);
+    m_fakeContent->setPixmap(pixmap);
 
     m_scrollAnimation->setStartValue(QPoint(0, next ? 0 : -one.height()));
     m_scrollAnimation->setEndValue(QPoint(0, next ? -one.height() : 0));
@@ -788,6 +827,123 @@ void CalendarWindow::slotEditSchedule(const DSchedule::Ptr &schedule)
     CScheduleDlg scheduleDlg(0, this, false);
     scheduleDlg.setData(schedule);
     scheduleDlg.exec();
+}
+
+namespace {
+
+/**
+ * @brief changeRepetitionRule   把重复日程的重复规则截到选中那一次之前
+ *
+ * 移植自参考实现 CScheduleOperation::changeRepetitionRule()。删除「本次及以后」
+ * 时先用它改原日程的重复规则：按次数重复的改成剩余次数，永不结束 / 结束于日期的
+ * 把结束日期挪到选中那天的前一天。改完是删是更新由调用方按规则还剩不剩日程决定。
+ */
+void changeRepetitionRule(DSchedule::Ptr &newinfo, const DSchedule::Ptr &oldinfo)
+{
+    const int num = DSchedule::numberOfRepetitions(newinfo, oldinfo->dtStart());
+    if (newinfo->recurrence()->duration() > 0) {
+        //按次数重复：只留选中这次之前的
+        const int duration = num - 1;
+        if (duration > 1) {
+            newinfo->recurrence()->setDuration(duration);
+        } else {
+            //剩不下第二次就不算重复日程了
+            newinfo->setRRuleType(DSchedule::RRule_None);
+        }
+    } else {
+        //永不结束 / 结束于日期：结束日期挪到选中那天的前一天
+        newinfo->recurrence()->setDuration(0);
+        newinfo->recurrence()->setEndDateTime(oldinfo->dtStart().addDays(-1));
+    }
+}
+
+} // namespace
+
+void CalendarWindow::slotDeleteSchedule(const DSchedule::Ptr &schedule)
+{
+    if (schedule.isNull()) {
+        return;
+    }
+
+    // 视图给的是展开后的那一次（重复日程的 dtStart 是这一次的开始时间），而改重复
+    // 规则、删日程都要在原始日程上做，所以先按 UID 回库里取原始日程
+    // （参考实现 CScheduleOperation::deleteSchedule 同样是先取原始数据）
+    DSchedule::Ptr origin = CalendarService::instance()->getScheduleByScheduleID(schedule->uid());
+    if (origin.isNull()) {
+        return;
+    }
+
+    // 确认弹窗与按钮文案都取自参考实现 CScheduleOperation::deleteSchedule()：
+    // 普通日程问一次，重复日程还要问删哪几次
+    CScheduleCtrlDlg msgBox(this);
+    msgBox.setText(tr("You are deleting an event."));
+
+    if (origin->getRRuleType() == DSchedule::RRule_None) {
+        msgBox.setInformativeText(tr("Are you sure you want to delete this event?"));
+        msgBox.addPushButton(tr("Cancel", "button"), true);
+        msgBox.addWaringButton(tr("Delete", "button"), true);
+        msgBox.exec();
+        if (msgBox.clickButton() == 1) {
+            CalendarService::instance()->deleteScheduleByScheduleID(origin->uid());
+        }
+        return;
+    }
+
+    // 重复日程：numberOfRepetitions() 数的是「截止这次一共重复了几次」，
+    // 第一次就是 1 —— 它前面没有可保留的，所以没有「本次及以后」这个选项
+    if (DSchedule::numberOfRepetitions(origin, schedule->dtStart()) == 1) {
+        msgBox.setInformativeText(
+            tr("Do you want to delete all occurrences of this event, or only the "
+               "selected occurrence?"));
+        msgBox.addPushButton(tr("Cancel", "button"));
+        msgBox.addPushButton(tr("Delete All"));
+        msgBox.addWaringButton(tr("Delete Only This Event"));
+        msgBox.exec();
+
+        switch (msgBox.clickButton()) {
+        case 1:
+            CalendarService::instance()->deleteScheduleByScheduleID(origin->uid());
+            break;
+        case 2:
+            //仅删这一次：把这次加进重复规则的忽略列表，日程本身留在库里
+            origin->recurrence()->addExDateTime(schedule->dtStart());
+            CalendarService::instance()->updateSchedule(origin);
+            break;
+        default:
+            break;
+        }
+        return;
+    }
+
+    msgBox.setInformativeText(
+        tr("Do you want to delete this and all future occurrences of this event, or "
+           "only the selected occurrence?"));
+    msgBox.addPushButton(tr("Cancel", "button"));
+    msgBox.addPushButton(tr("Delete All Future Events"));
+    msgBox.addWaringButton(tr("Delete Only This Event"));
+    msgBox.exec();
+
+    switch (msgBox.clickButton()) {
+    case 1: {
+        //删除本次及以后：截断重复规则后判断还剩不剩日程
+        const QList<QDateTime> exDt = origin->recurrence()->exDateTimes();
+        changeRepetitionRule(origin, schedule);
+        if (origin->getRRuleType() == DSchedule::RRule_None
+                && exDt.contains(origin->dtStart())) {
+            //截断后不重复了，而它自己的开始时间又早在忽略列表里，等于一次都不剩
+            CalendarService::instance()->deleteScheduleByScheduleID(origin->uid());
+        } else {
+            CalendarService::instance()->updateSchedule(origin);
+        }
+        break;
+    }
+    case 2:
+        origin->recurrence()->addExDateTime(schedule->dtStart());
+        CalendarService::instance()->updateSchedule(origin);
+        break;
+    default:
+        break;
+    }
 }
 
 void CalendarWindow::showEvent(QShowEvent *event)

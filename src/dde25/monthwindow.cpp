@@ -105,8 +105,14 @@ CMonthWindow::CMonthWindow(QWidget *parent)
     connect(m_monthDayView, &CMonthDayView::signalsSelectDate, this, [this](const QDate &date) {
         setCurrentDate(date);
     });
-    // 参考实现的 slotAngleDelta：delta > 0 为下一个月，< 0 为上一个月
-    const auto angleDeltaToSlide = [this](int delta) { slideMonth(delta > 0); };
+    // 滚轮：向上滚（delta > 0）为上一个月，向下滚为下一个月。
+    // 参考实现的 slotAngleDelta 是反的（delta > 0 为下一个月），这里跟周/日视图和
+    // DDE15 模式的月历统一，免得同一个滚轮动作在不同视图里翻向相反。
+    // 连续滚动时按累计量一次跳到位，免得每个档位都重建一遍月视图
+    m_wheelStepper = std::make_unique<DDE25::WheelStepper>(
+        [this](int steps) { setCurrentDate(m_currentDate.addMonths(-steps)); },
+        DDE25::kWheelCooldownMs);
+    const auto angleDeltaToSlide = [this](int delta) { m_wheelStepper->step(delta); };
     connect(m_monthDayView, &CMonthDayView::signalAngleDelta, this, angleDeltaToSlide);
     connect(m_monthView, &CMonthView::signalsViewSelectDate, this, &CMonthWindow::signalsSelectDate);
     connect(m_monthView, &CMonthView::signalAngleDelta, this, angleDeltaToSlide);
@@ -114,6 +120,8 @@ CMonthWindow::CMonthWindow(QWidget *parent)
             this, &CMonthWindow::signalCreateSchedule);
     connect(m_monthView, &CMonthView::signalEditSchedule,
             this, &CMonthWindow::signalEditSchedule);
+    connect(m_monthView, &CMonthView::signalDeleteSchedule,
+            this, &CMonthWindow::signalDeleteSchedule);
     connect(m_today, &QPushButton::clicked, this, [this] {
         setCurrentDate(QDate::currentDate());
     });
@@ -121,14 +129,6 @@ CMonthWindow::CMonthWindow(QWidget *parent)
     setTheMe(DDE25::themeType());
     setYearData();
     updateLunarYearLabel();
-}
-
-/**
- * @brief CMonthWindow::slideMonth   切换月份，并更新信息
- */
-void CMonthWindow::slideMonth(bool next)
-{
-    setCurrentDate(next ? m_currentDate.addMonths(1) : m_currentDate.addMonths(-1));
 }
 
 /**
@@ -143,11 +143,12 @@ void CMonthWindow::resizeEvent(QResizeEvent *event)
 
 void CMonthWindow::keyPressEvent(QKeyEvent *event)
 {
-    // 左右方向键翻月（dde-calendar 的月视图没有上/下按钮，靠键盘与月份滚轮导航）
+    // 左右方向键翻月（dde-calendar 的月视图没有上/下按钮，靠键盘与月份滚轮导航）。
+    // 键盘连发也走节流，方向和翻页一致：← 上一个月，→ 下一个月（+1 = 滚轮向上 = 上个月）
     if (event->key() == Qt::Key_Left) {
-        setCurrentDate(m_currentDate.addMonths(-1));
+        m_wheelStepper->nudge(1);
     } else if (event->key() == Qt::Key_Right) {
-        setCurrentDate(m_currentDate.addMonths(1));
+        m_wheelStepper->nudge(-1);
     } else {
         QWidget::keyPressEvent(event);
     }
@@ -159,13 +160,43 @@ void CMonthWindow::setCurrentDate(const QDate &date)
         return;
     }
 
+    // 日期没变就不重建：年月条翻月后 CalendarWindow 会把同一个日期再广播回来一次，
+    // 挡掉这一下等于省掉一整遍月视图构建
+    if (date == m_currentDate) {
+        return;
+    }
+
     m_currentDate = date;
-    m_monthView->setCurrentDate(date);
-    m_monthDayView->setSelectDate(date);
-    setYearData();
-    updateLunarYearLabel();
+    // 藏着的时候只记日期，等显示出来再重建：跨视图广播会把 M/W/D 三个视图都刷一遍，
+    // 其中两个是隐藏的，白刷（隐藏时刷也白刷——Qt 不会给隐藏控件重绘）
+    if (isVisible()) {
+        refreshCurrentDate();
+    } else {
+        m_dateRefreshPending = true;
+    }
 
     emit signalsCurrentDateChanged(date);
+}
+
+/**
+ * @brief CMonthWindow::refreshCurrentDate  按 m_currentDate 重建各子控件
+ */
+void CMonthWindow::refreshCurrentDate()
+{
+    m_dateRefreshPending = false;
+    m_monthView->setCurrentDate(m_currentDate);
+    m_monthDayView->setSelectDate(m_currentDate);
+    setYearData();
+    updateLunarYearLabel();
+}
+
+void CMonthWindow::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+
+    if (m_dateRefreshPending) {
+        refreshCurrentDate();
+    }
 }
 
 void CMonthWindow::setCurrentDateTime(const QDateTime &currentDate) {

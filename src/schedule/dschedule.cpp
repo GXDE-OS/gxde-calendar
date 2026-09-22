@@ -184,55 +184,7 @@ bool DSchedule::operator<(const DSchedule &schedule) const
     return true;
 }
 
-void DSchedule::setAlarmType(const DSchedule::AlarmType &alarmType)
-{
-    // qCDebug(CommonLogger) << "Setting alarm type to:" << static_cast<int>(alarmType);
-    //如果提醒规则没有变化则退出
-    if (alarmType == getAlarmType()) {
-        qCDebug(CommonLogger) << "Alarm type unchanged, skipping update";
-        return;
-    }
-
-    //清除提醒规则
-    this->clearAlarms();
-    //如果为从不则退出
-    if (alarmType == AlarmType::Alarm_None || alarmType == AlarmType::Alarm_AllDay_None) {
-        qCDebug(CommonLogger) << "Setting alarm type to None, clearing all alarms";
-        return;
-    }
-
-    QMap<int, AlarmType> alarmMap = getAlarmMap();
-    QMap<int, AlarmType>::const_iterator iter = alarmMap.constBegin();
-    for (; iter != alarmMap.constEnd(); ++iter) {
-        if (iter.value() == alarmType) {
-            KCalendarCore::Alarm::Ptr alarm = KCalendarCore::Alarm::Ptr(new KCalendarCore::Alarm(this));
-            alarm->setEnabled(true);
-            alarm->setType(KCalendarCore::Alarm::Display);
-            alarm->setDisplayAlarm(this->summary());
-            KCalendarCore::Duration duration(iter.key());
-            alarm->setStartOffset(duration);
-            addAlarm(alarm);
-            qCDebug(CommonLogger) << "Added alarm with offset:" << iter.key() << "seconds";
-            break;
-        }
-    }
-}
-
-DSchedule::AlarmType DSchedule::getAlarmType()
-{
-    // qCDebug(CommonLogger) << "Getting alarm type for schedule:" << summary();
-    AlarmType alarmType = allDay() ? Alarm_AllDay_None : Alarm_None;
-    KCalendarCore::Alarm::List alarmList = this->alarms();
-    if (alarmList.size() > 0) {
-        KCalendarCore::Duration duration = alarmList.at(0)->startOffset();
-        QMap<int, AlarmType> alarmMap = getAlarmMap();
-        if (alarmMap.contains(duration.asSeconds())) {
-            alarmType = alarmMap[duration.asSeconds()];
-        }
-    }
-    // qCDebug(CommonLogger) << "Found alarm type:" << static_cast<int>(alarmType);
-    return alarmType;
-}
+//setAlarmType/getAlarmType 已删，见 dschedule.h 里的说明
 
 void DSchedule::setRRuleType(const DSchedule::RRuleType &rtype)
 {
@@ -715,23 +667,7 @@ bool operator==(const DSchedule::Ptr &s1, const DSchedule::Ptr &s2)
     return s1.isNull() || s2.isNull() ? s1.isNull() && s2.isNull() : s1->instanceIdentifier() == s2->instanceIdentifier();
 }
 
-QMap<int, DSchedule::AlarmType> DSchedule::getAlarmMap()
-{
-    // qCDebug(CommonLogger) << "Getting alarm map.";
-    static QMap<int, DSchedule::AlarmType> alarmMap {
-        {0, Alarm_Begin},
-        {-15 * Duration_Min, Alarm_15Min_Front},
-        {-30 * Duration_Min, Alarm_30Min_Front},
-        {-Duration_Hour, Alarm_1Hour_Front},
-        {-Duration_Day, Alarm_1Day_Front},
-        {-Duration_Day * 2, Alarm_2Day_Front},
-        {-Duration_Week, Alarm_1Week_Front},
-        {9 * Duration_Hour, Alarm_9Hour_After},
-        {-15 * Duration_Hour, Alarm_15Hour_Front},
-        {-39 * Duration_Hour, Alarm_39Hour_Front},
-        {-159 * Duration_Hour, Alarm_159Hour_Front}};
-    return alarmMap;
-}
+//getAlarmMap 已删，见 dschedule.h 里的说明
 
 QString DSchedule::fileName() const
 {

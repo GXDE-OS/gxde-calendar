@@ -31,6 +31,8 @@
 #include "cmonthschedulenumitem.h"
 #include "schedulelayout.h"
 
+#include "schedule/calendarservice.h"
+
 #include <QApplication>
 #include <QContextMenuEvent>
 #include <QMenu>
@@ -314,13 +316,16 @@ void CMonthGraphicsview::mouseDoubleClickEvent(QMouseEvent *event)
 
 void CMonthGraphicsview::contextMenuEvent(QContextMenuEvent *event)
 {
-    const QDate date = dateAt(mapToScene(event->pos()));
+    // 点在日程块上时菜单给「编辑 / 删除」，点空白格才是「新建日程」；
+    // 日程块下面一定压着一个有效日期，所以先后顺序对新建那条分支没有影响
+    CMonthScheduleItem *item = scheduleItemAt(event->pos());
+    const QDate date = item != nullptr ? item->getDate() : dateAt(mapToScene(event->pos()));
     if (!date.isValid()) {
         QGraphicsView::contextMenuEvent(event);
         return;
     }
 
-    popupMenu(event->globalPos(), date);
+    popupMenu(event->globalPos(), date, item == nullptr ? DSchedule::Ptr() : item->getData());
     event->accept();
 }
 
@@ -340,11 +345,29 @@ CMonthScheduleItem *CMonthGraphicsview::scheduleItemAt(const QPoint &viewPos) co
     return dynamic_cast<CMonthScheduleItem *>(itemAt(viewPos));
 }
 
-void CMonthGraphicsview::popupMenu(const QPoint &globalPos, const QDate &date)
+void CMonthGraphicsview::popupMenu(const QPoint &globalPos, const QDate &date,
+                                   const DSchedule::Ptr &schedule)
 {
     QMenu menu(this);
-    menu.addAction(tr("New Schedule"), this, [this, date] {
-        emit signalCreateSchedule(QDateTime(date, QTime(0, 0)));
-    });
+
+    if (!schedule.isNull()) {
+        // 菜单项与参考实现一致：编辑在前、删除在后
+        QAction *editAction = menu.addAction(tr("Edit"), this, [this, schedule] {
+            emit signalEditSchedule(schedule);
+        });
+        QAction *deleteAction = menu.addAction(tr("Delete"), this, [this, schedule] {
+            emit signalDeleteSchedule(schedule);
+        });
+        // 只读日历（ICS 订阅）的日程改不了（见 isScheduleEditable 的说明），
+        // 菜单上直接把「编辑」置灰，别让人点开一个全灰的表单
+        editAction->setEnabled(CalendarService::instance()->isScheduleEditable(schedule));
+        // 只读日历（ICS 订阅、节假日）把「删除」置灰，参考实现同样处理
+        deleteAction->setEnabled(CalendarService::instance()->isScheduleDeletable(schedule));
+    } else {
+        menu.addAction(tr("New Schedule"), this, [this, date] {
+            emit signalCreateSchedule(QDateTime(date, QTime(0, 0)));
+        });
+    }
+
     menu.exec(globalPos);
 }

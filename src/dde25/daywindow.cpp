@@ -125,6 +125,7 @@ void CDayWindow::setYearData()
 
 void CDayWindow::updateShowDate()
 {
+    m_dateRefreshPending = false;
     setYearData();
 
     const int w = m_scheduleView->width() - 72;
@@ -193,8 +194,23 @@ void CDayWindow::setCurrentDate(const QDate &date)
         return;
     }
     m_selectDate = date;
-    updateShowDate();
+    // 隐藏时只记日期，显示出来再重建：跨视图广播会把 M/W/D 三个视图都刷一遍，
+    // 隐藏的那些白刷
+    if (isVisible()) {
+        updateShowDate();
+    } else {
+        m_dateRefreshPending = true;
+    }
     emit signalsCurrentDateChanged(m_selectDate);
+}
+
+void CDayWindow::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+
+    if (m_dateRefreshPending) {
+        updateShowDate();
+    }
 }
 
 void CDayWindow::setCurrentDateTime(const QDateTime &currentDate) {
@@ -298,9 +314,12 @@ void CDayWindow::initUI()
     leftMainLayout->addWidget(m_verline);
     leftMainLayout->addWidget(m_daymonthView);
 
+    // 日程区 : 迷你月历 = 3 : 1（约 75% : 25%）。
+    // 参考实现是 3:1:2，右边占 40%，这里收窄：迷你月历跟着窗口变宽而变大，
+    // 40% 时格子被撑得很空。竖分隔线是定宽 1px，不参与分配，stretch 给 0
     leftMainLayout->setStretchFactor(leftLayout, 3);
-    leftMainLayout->setStretchFactor(m_verline, 1);
-    leftMainLayout->setStretchFactor(m_daymonthView, 2);
+    leftMainLayout->setStretchFactor(m_verline, 0);
+    leftMainLayout->setStretchFactor(m_daymonthView, 1);
 
     m_leftground = new CustomFrame(this);
     m_leftground->setRoundState(true, true, true, true);
@@ -319,18 +338,19 @@ void CDayWindow::initConnection()
 {
     connect(m_daymonthView, &CDayMonthView::signalChangeSelectDate,
             this, &CDayWindow::slotChangeSelectDate);
-    connect(m_scheduleView, &CScheduleBodyView::signalAngleDelta, this, [this](int delta) {
-        if (delta > 0) {
-            slotSwitchPrePage();
-        } else if (delta < 0) {
-            slotSwitchNextPage();
-        }
-    });
+    // 滚轮：delta > 0 为前一天，< 0 为后一天。连续滚动按累计天数一次跳到位
+    m_wheelStepper = std::make_unique<DDE25::WheelStepper>(
+        [this](int steps) { setCurrentDate(m_selectDate.addDays(-steps)); },
+        DDE25::kWheelCooldownMs);
+    connect(m_scheduleView, &CScheduleBodyView::signalAngleDelta,
+            this, [this](int delta) { m_wheelStepper->step(delta); });
     // 新建/编辑日程的入口往上抛给 CalendarWindow，弹窗由它统一负责
     connect(m_scheduleView, &CScheduleBodyView::signalCreateSchedule,
             this, &CDayWindow::signalCreateSchedule);
     connect(m_scheduleView, &CScheduleBodyView::signalEditSchedule,
             this, &CDayWindow::signalEditSchedule);
+    connect(m_scheduleView, &CScheduleBodyView::signalDeleteSchedule,
+            this, &CDayWindow::signalDeleteSchedule);
     // 日程增删改都发 scheduleUpdate()，重查一遍就能刷新日程块和迷你月历的圆点
     connect(CalendarService::instance(), &CalendarService::scheduleUpdate,
             this, &CDayWindow::updateShowDate);
@@ -347,11 +367,12 @@ void CDayWindow::resizeEvent(QResizeEvent *event)
 void CDayWindow::keyPressEvent(QKeyEvent *event)
 {
     switch (event->key()) {
+    // 键盘连发同样按累计天数跳，方向和滚轮一致（+1 = 滚轮向上 = 前一天）
     case Qt::Key_Left:
-        slotSwitchPrePage();
+        m_wheelStepper->nudge(1);
         break;
     case Qt::Key_Right:
-        slotSwitchNextPage();
+        m_wheelStepper->nudge(-1);
         break;
     default:
         QWidget::keyPressEvent(event);

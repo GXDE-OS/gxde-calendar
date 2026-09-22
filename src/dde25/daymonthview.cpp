@@ -54,6 +54,10 @@ CDayMonthView::CDayMonthView(QWidget *parent)
     m_weeklist.append(tr("Sunday"));
     initUI();
     initConnection();
+    // 滚轮向上（delta > 0）为前一天：连续滚动累计后一次跳到位
+    m_wheelStepper = std::make_unique<DDE25::WheelStepper>(
+        [this](int steps) { changeSelectDate(m_selectDate.addDays(-steps)); },
+        DDE25::kWheelCooldownMs);
 }
 
 CDayMonthView::~CDayMonthView() = default;
@@ -313,13 +317,8 @@ void CDayMonthView::changeSelectDate(const QDate &date)
 
 void CDayMonthView::wheelEvent(QWheelEvent *event)
 {
-    if (event->angleDelta().y() < 0) {
-        // 向下滚动 = 后一天
-        changeSelectDate(m_selectDate.addDays(1));
-    } else {
-        // 向上滚动 = 前一天
-        changeSelectDate(m_selectDate.addDays(-1));
-    }
+    // 向上滚动 = 前一天，向下 = 后一天。连续滚动按累计天数一次跳到位（见 WheelStepper）
+    m_wheelStepper->step(event->angleDelta().y());
 }
 
 void CDayMonthView::paintEvent(QPaintEvent *e)

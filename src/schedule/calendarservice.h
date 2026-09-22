@@ -73,6 +73,43 @@ public:
     bool deleteScheduleByScheduleID(const QString &scheduleID);
 
     /**
+     * @brief isScheduleDeletable   该日程能不能删（界面据此启用右键菜单的「删除」）
+     *
+     * 与编辑同一条规则，见 isReadOnlySchedule()。
+     *
+     * 注意别拿 privilege 的 Delete 位直接判断：参考实现给本地帐户的
+     * 工作/生活/其他三个日历的也是 Read（daccountdatabase.cpp 的 initSysType，
+     * 本项目的 initSysType 是照抄的），而那三个恰恰是本地日程最常待的地方，
+     * 按权限位判会把本地日程全判成不可删。
+     *
+     * 也别照着参考实现把节假日类型（privilege 为 None）判成不可删：参考实现的
+     * 节假日日程是服务端按农历现算的、从不落库，那边才有「只读信息弹窗」一说；
+     * 本项目的节假日走农历缓存，没有任何代码往节假日类型里写日程，所以库里真
+     * 出现一条节假日类型的日程，它只可能是用户在新建弹窗里建出来的普通日程
+     * （早期版本弹窗默认选中该类型，已修），挡住删除除了把人卡住没别的作用。
+     */
+    bool isScheduleDeletable(const DSchedule::Ptr &schedule);
+
+    /**
+     * @brief isScheduleEditable    该日程能不能改（弹窗据此把整个表单置灰）
+     *
+     * 与删除同一条规则：订阅来的日程本地改完，下一次刷新就被远端内容整批覆盖，
+     * 让用户改等于骗他。参考实现里这个判断长在
+     * CScheduleDlg::setShowState() 的 canEdit 上
+     * （!m_accountItem.isNull() && isCanSyncShedule() && canWriteCurrentCalDavCollection()），
+     * 本项目没有 CalDAV 账户，只读来源就只剩订阅日历，所以由这里给出。
+     */
+    bool isScheduleEditable(const DSchedule::Ptr &schedule);
+
+    /**
+     * @brief isSubscriptionCalendar    这个日历是不是 ICS 订阅（只读的远端日历）
+     *
+     * 新建弹窗的日历下拉不列它：往里建的日程会在下一次刷新时被整批覆盖
+     * （见构造函数里「整批替换」那段），列出来只会让用户白填一遍。
+     */
+    bool isSubscriptionCalendar(const QString &typeID);
+
+    /**
      * @brief querySchedulesWithParameter   按查询参数取日程并按日期分组
      *
      * 返回的 map 已经把重复日程展开到查询区间内的每一天（参考实现的
@@ -101,14 +138,6 @@ public:
 
     ///////////////类型颜色
     DTypeColor::List getSysColors();
-
-    /**
-     * @brief getRemindSchedule    取出所有设了提醒的日程（isAlarm = 1）
-     *
-     * 返回的日程是从库里的 ics 串重建的，因此带着各自的 alarm offset。
-     * 提醒模块按它排定时器。
-     */
-    DSchedule::List getRemindSchedule();
 
     /**
      * @brief createUserScheduleType   新建一个「用户日历」（导入 .ics 时用）
@@ -155,8 +184,22 @@ public:
      * 会为这个订阅建一个日程类型（名字取 displayName），并立即拉取一次。
      * 返回新建类型的 ID；地址非法或建类型失败返回空串。
      * 拉取是异步的，成功入库后发 scheduleUpdate()。
+     * @param colorCode        订阅日历的颜色色值，为空时自动挑一个（见 resolveColorID()）
      */
-    QString subscribeIcs(const QString &url, const QString &displayName, int refreshIntervalMin);
+    QString subscribeIcs(const QString &url, const QString &displayName, int refreshIntervalMin,
+                         const QString &colorCode = QString());
+
+    /**
+     * @brief updateIcsSubscription    改一个已有订阅（地址/名字/刷新间隔/颜色）
+     *
+     * 类型名和颜色改在日程类型上，地址和间隔改在订阅记录上。地址变了会把
+     * lastSync/lastETag 清掉 —— 那两个记的是旧地址的同步状态，留着的话新地址
+     * 要么等到下一个间隔才拉，要么拿旧 ETag 去问、被服务端当成「没变」。
+     * 改完立刻拉一次。typeID 不是订阅时返回 false。
+     */
+    bool updateIcsSubscription(const QString &typeID, const QString &url,
+                               const QString &displayName, int refreshIntervalMin,
+                               const QString &colorCode);
 
     /**
      * @brief unsubscribeIcs   取消订阅：删类型、删该类型下的日程、删订阅记录
@@ -223,6 +266,14 @@ private:
     void ensureUidAvailable(const DSchedule::Ptr &schedule);
 
     /**
+     * @brief isReadOnlySchedule    日程是不是「远端说了算」的那种（订阅日历里的）
+     *
+     * 删和改共用这一条规则，所以只在这里写一次：类型查不到、或者所属日历是 ICS
+     * 订阅，都算只读。
+     */
+    bool isReadOnlySchedule(const DSchedule::Ptr &schedule) const;
+
+    /**
      * @brief markIcsSynced  记下这次拉取的时间和 ETag
      *
      * 内容有更新和「远端没变」（304）都要记：不记的话 refreshAllIcs() 会按间隔
@@ -240,6 +291,19 @@ private:
      */
     bool icsRefetchDue(const QString &typeID, const QDateTime &lastSync,
                        int refreshIntervalMin, const QDateTime &now) const;
+
+    /**
+     * @brief resolveColorID   把界面给的颜色色值换成 typeColor 表里的 colorID
+     *
+     * 日程类型存的是颜色表的 ColorID，颜色表和类型表是 inner join 的：色值对不上
+     * 表里任何一行，这个日历在列表里就整个不出现。所以色值先按调色板匹配；用户从
+     * 取色器挑的自定义色不在调色板里，那就往颜色表补一行（跟自定义日历色一个待遇）。
+     * 色值为空、不让自定义、或都失败时挑一个没被占用的系统色。
+     * @param allowCustomColor 色值不在调色板里时是否补一行自定义色。导入走的是文件里
+     *                         带的颜色提示，那是别人写进来的值，不给补（false）；订阅
+     *                         和编辑是用户在取色器里点的，照办（true）。
+     */
+    QString resolveColorID(const QString &colorCode, bool allowCustomColor = true);
 
     ScheduleDataBase *m_db = nullptr;
     IcsManager *m_ics = nullptr;

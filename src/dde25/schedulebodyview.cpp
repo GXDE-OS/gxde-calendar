@@ -61,6 +61,8 @@ CScheduleBodyView::CScheduleBodyView(QWidget *parent, CWeekGraphicsView::ViewPos
             this, &CScheduleBodyView::signalCreateSchedule);
     connect(m_allDayView, &CAllDayView::signalEditSchedule,
             this, &CScheduleBodyView::signalEditSchedule);
+    connect(m_allDayView, &CAllDayView::signalDeleteSchedule,
+            this, &CScheduleBodyView::signalDeleteSchedule);
     layout->addWidget(m_allDayView);
 
     m_graphicsView = new CWeekGraphicsView(this, m_viewPos);
@@ -71,6 +73,8 @@ CScheduleBodyView::CScheduleBodyView(QWidget *parent, CWeekGraphicsView::ViewPos
             this, &CScheduleBodyView::signalCreateSchedule);
     connect(m_graphicsView, &CWeekGraphicsView::signalEditSchedule,
             this, &CScheduleBodyView::signalEditSchedule);
+    connect(m_graphicsView, &CWeekGraphicsView::signalDeleteSchedule,
+            this, &CScheduleBodyView::signalDeleteSchedule);
     layout->addWidget(m_graphicsView);
 
     setLayout(layout);

@@ -31,7 +31,10 @@
 #include <QIcon>
 #include <QSet>
 #include <QString>
+#include <QTimer>
 #include <QVector>
+
+#include <functional>
 
 #include "calendardbus.h"
 
@@ -44,10 +47,11 @@ int themeType();
 // 这里用 Qt 自身的 highlight 色，避免额外依赖。
 QColor systemActiveColor();
 
-// 翻页箭头（日视图迷你月历、周视图周数条上的 < >）。
+// 翻页箭头（年视图工具栏、日视图迷你月历、周视图周数条上的 < >）。
 // dde-calendar 用 DIconButton(DStyle::SP_ArrowLeft)，DTK 画出来是一根 3px 粗的实心箭头，
-// 移植到 Qt6 后换成从 dde-calendar 那套 previous_/next_ 箭头抠出来的细描边版本。
-// type 为 setTheMe 的主题类型：2 用白色描边，其余用深灰。
+// 移植到 Qt6 后改用细描边折线：45 度、两端各 6px、描边 1（渲染出来是 1px 细边），
+// 尺寸照 dde-calendar 侧栏那个箭头量的（见 resources/icon/{previous,next}_nav*.svg）。
+// type 为 setTheMe 的主题类型：2 用 DTK2 深色主题的 #DDDDDD，其余用 #303030。
 QIcon navArrowIcon(bool next, int type);
 
 // 分栏之间 1px 分隔线的样式，取自 gxde-file-manager 主题里的 QSplitter::handle
@@ -68,6 +72,41 @@ int weekNumOfYear(const QDate &date, Qt::DayOfWeek firstDay);
 
 // 一周的 7 天（从 firstDay 起算）。
 QVector<QDate> weekDates(const QDate &date, Qt::DayOfWeek firstDay);
+
+// M/W/D 三个视图的滚轮节流间隔（毫秒）：一次翻月/换天要重建整屏，
+// 间隔比重建耗时略大即可——太短会堆积，太长会觉得滚动没跟上手。
+constexpr int kWheelCooldownMs = 160;
+
+// 滚轮一档的角度量：QWheelEvent::angleDelta() 以八分之一度为单位，120 就是滚轮的一格
+constexpr int kWheelUnit = 120;
+
+// 滚轮节流器：把一串滚轮事件按「格」累计，再合并成一次跳转。
+// 翻月/换天要重建整屏（Debug 构建下一次约 80~100ms），一档一次重建的话，连续滚动就会
+// 堆积成几百毫秒的卡顿（档数 × 重建耗时）。这里第一下立刻响应，之后落在冷却期内的档位
+// 只累计，冷却结束时合并跳一次——既不丢滚动量，也不会堆积。
+class WheelStepper
+{
+public:
+    // handler 收到的是累计档数：滚轮向上为 +，向下为 -（正负同传入 delta 的符号）
+    // cooldownMs 是两次跳转之间的最小间隔，翻页动画比它短为宜，免得动画被中途打断
+    explicit WheelStepper(std::function<void(int)> handler, int cooldownMs);
+
+    // 滚轮入口：delta 为 QWheelEvent::angleDelta() 的分量，按角度凑够一格才算一档
+    void step(int delta);
+
+    // 离散入口（键盘连发等）：一次调用就是一档，不参与角度累计
+    void nudge(int steps);
+
+private:
+    // 记档：冷却期内只累计，否则立刻跳并开始冷却
+    void push(int steps);
+    void flush();
+
+    std::function<void(int)> m_handler;
+    QTimer m_cooldown;
+    int m_pending = 0;    // 冷却期内攒下的档数
+    int m_remainder = 0;  // 不足一档的角度余量
+};
 
 // 农历数据：按整月一次性拉取并缓存，绘制时只读缓存，避免在 paint 里发 DBus 调用。
 class LunarCache

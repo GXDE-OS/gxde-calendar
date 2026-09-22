@@ -41,6 +41,7 @@
 #include <QFileInfo>
 #include <QSet>
 #include <QTimer>
+#include <QUrl>
 #include <QUuid>
 
 namespace {
@@ -58,6 +59,21 @@ DScheduleType::Ptr makeUserType(const QString &typeID, const QString &typeName,
     type->setShowState(DScheduleType::Show);
     type->setDtCreate(QDateTime::currentDateTime());
     return type;
+}
+
+// 订阅列表上的兜底名字。名字留空时 subscribeIcs() 拿整条地址当名字，列表里名字和
+// 地址就成了同一串被省略的 URL，几个订阅摆一起分不清哪个是哪个。这里取「域名 / 文件名」，
+// 短，而且正好是区分订阅的那部分（google 的私有日历文件名是随机串，同域名下也能区分）。
+QString friendlySubscriptionName(const QString &url)
+{
+    const QUrl parsed(url);
+    const QString host = parsed.host();
+    if (host.isEmpty()) {
+        return url;
+    }
+
+    const QString file = parsed.fileName();
+    return file.isEmpty() ? host : QStringLiteral("%1 / %2").arg(host, file);
 }
 
 } // namespace
@@ -214,6 +230,40 @@ bool CalendarService::deleteScheduleByScheduleID(const QString &scheduleID)
     return ok;
 }
 
+bool CalendarService::isSubscriptionCalendar(const QString &typeID)
+{
+    if (typeID.isEmpty()) {
+        return false;
+    }
+    return !m_db->getIcsSubscription(typeID).typeID.isEmpty();
+}
+
+bool CalendarService::isReadOnlySchedule(const DSchedule::Ptr &schedule) const
+{
+    if (schedule.isNull() || schedule->scheduleTypeID().isEmpty()) {
+        return true;
+    }
+
+    //类型都查不到（比如日程是迁移过来的残留数据）：改不了也删不掉
+    if (m_db->getScheduleTypeByID(schedule->scheduleTypeID()).isNull()) {
+        return true;
+    }
+
+    //唯一的只读来源是 ICS 订阅日历：内容属于远端，本地怎么改都会在下一次刷新
+    //时被整批覆盖（构造函数里「整批替换」那段），删掉也会再拉回来
+    return !m_db->getIcsSubscription(schedule->scheduleTypeID()).typeID.isEmpty();
+}
+
+bool CalendarService::isScheduleDeletable(const DSchedule::Ptr &schedule)
+{
+    return !isReadOnlySchedule(schedule);
+}
+
+bool CalendarService::isScheduleEditable(const DSchedule::Ptr &schedule)
+{
+    return !isReadOnlySchedule(schedule);
+}
+
 QMap<QDate, DSchedule::List> CalendarService::querySchedulesWithParameter(
         const DScheduleQueryPar::Ptr &queryPar)
 {
@@ -248,7 +298,21 @@ QMap<QDate, DSchedule::List> CalendarService::querySchedulesWithParameter(
 
 DScheduleType::List CalendarService::getScheduleTypeList()
 {
-    return m_db->getScheduleTypeList();
+    //对应参考实现 AccountItem::getScheduleTypeList()：privilege 为 None 的类型不往
+    //界面上给，也就是 initSysType() 建的节假日类型。参考实现里它根本不是用户的日历：
+    //那里的日程是服务端按农历现算的、从不落库，所以既不展示，也不许新建日程选它。
+    //
+    //这一层过滤不能省。类型表是按 rowid 顺序取的，节假日类型是 initSysType() 建的
+    //第一个，漏掉过滤它就排在列表最前面：新建日程弹窗的日历下拉默认选中第一项，
+    //用户建的日程会全落到节假日类型里去（颜色是节假日的橙，还删不掉）。
+    DScheduleType::List list;
+    const DScheduleType::List types = m_db->getScheduleTypeList();
+    for (const DScheduleType::Ptr &type : types) {
+        if (!type.isNull() && type->privilege() != DScheduleType::None) {
+            list.append(type);
+        }
+    }
+    return list;
 }
 
 DScheduleType::Ptr CalendarService::getScheduleTypeByID(const QString &typeID)
@@ -313,9 +377,65 @@ QString CalendarService::getFestivalTypeID()
     return m_db->getFestivalTypeID();
 }
 
-DSchedule::List CalendarService::getRemindSchedule()
+QString CalendarService::resolveColorID(const QString &colorCode, bool allowCustomColor)
 {
-    return m_db->getRemindSchedule();
+    const DTypeColor::List colors = getSysColors();
+
+    if (!colorCode.isEmpty()) {
+        //先按色值对调色板：九色都在表里，对上就能直接用
+        for (const DTypeColor::Ptr &color : colors) {
+            if (color->colorCode().compare(colorCode, Qt::CaseInsensitive) == 0) {
+                return color->colorID();
+            }
+        }
+
+        if (allowCustomColor) {
+            //自定义色不在上面的调色板里（调色板只查 privilege=1 的内置色），
+            //但如果已经有个日历用着这个色值，就复用它的那一行——
+            //否则每次保存都往颜色表里插一行同样的颜色
+            //（查全部类型而不是界面那一份：颜色有没有人用要看库里的实际情况，
+            //  节假日类型也是占着一个颜色的）
+            const DScheduleType::List types = m_db->getScheduleTypeList();
+            for (const DScheduleType::Ptr &type : types) {
+                if (type->getColorCode().compare(colorCode, Qt::CaseInsensitive) == 0
+                    && !type->getColorID().isEmpty()) {
+                    return type->getColorID();
+                }
+            }
+
+            //色值表里没有，补一行，否则类型 join 不上颜色表，
+            //这个日历在所有列表里都不会出现
+            DTypeColor custom;
+            custom.setColorCode(colorCode);
+            custom.setPrivilege(DTypeColor::PriUser);
+            if (m_db->addTypeColor(custom)) {
+                //addTypeColor() 会把生成的 colorID 写回对象
+                return custom.colorID();
+            }
+            qCWarning(ServiceLogger) << "Failed to add custom type color:" << colorCode;
+        }
+    }
+
+    //没给颜色（或不让自定义）：挑一个还没有日历在用的颜色，免得新日历跟已有的撞色
+    QSet<QString> usedColors;
+    //同上：占用情况看全部类型，含不展示的节假日类型
+    const DScheduleType::List types = m_db->getScheduleTypeList();
+    for (const DScheduleType::Ptr &type : types) {
+        usedColors.insert(type->getColorID());
+    }
+    for (const DTypeColor::Ptr &color : colors) {
+        if (!usedColors.contains(color->colorID())) {
+            return color->colorID();
+        }
+    }
+
+    //九个颜色都被用掉了就用第一个，总得有颜色
+    if (!colors.isEmpty()) {
+        return colors.first()->colorID();
+    }
+
+    //调色板都没建起来（initDBData() 之后不该发生），至少给个能 join 上的旧值
+    return DDataBase::GOtherColorID;
 }
 
 QString CalendarService::createUserScheduleType(const QString &name, const QString &preferredColorCode)
@@ -331,36 +451,8 @@ QString CalendarService::createUserScheduleType(const QString &name, const QStri
         return QString();
     }
 
-    //先按色值把文件里带的颜色对到系统调色板上
-    QString colorID;
-    if (!preferredColorCode.isEmpty()) {
-        for (const DTypeColor::Ptr &color : colors) {
-            if (color->colorCode().compare(preferredColorCode, Qt::CaseInsensitive) == 0) {
-                colorID = color->colorID();
-                break;
-            }
-        }
-    }
-
-    //对不上就挑一个还没有日历在用的颜色，免得新日历跟已有的撞色
-    if (colorID.isEmpty()) {
-        QSet<QString> usedColors;
-        const DScheduleType::List types = getScheduleTypeList();
-        for (const DScheduleType::Ptr &type : types) {
-            usedColors.insert(type->getColorID());
-        }
-        for (const DTypeColor::Ptr &color : colors) {
-            if (!usedColors.contains(color->colorID())) {
-                colorID = color->colorID();
-                break;
-            }
-        }
-    }
-
-    //九个颜色都被用掉了就用第一个，总得有颜色
-    if (colorID.isEmpty()) {
-        colorID = colors.first()->colorID();
-    }
+    //文件里带的颜色只是提示，对不上调色板就另挑一个，不往颜色表里加别人写的色值
+    const QString colorID = resolveColorID(preferredColorCode, false);
 
     const QString typeID = QUuid::createUuid().toString(QUuid::WithoutBraces);
     return createScheduleType(makeUserType(typeID, name, name, colorID));
@@ -451,7 +543,7 @@ bool CalendarService::exportSchedule(const QString &icsFilePath, const QString &
 ///////////////ICS：远程订阅
 
 QString CalendarService::subscribeIcs(const QString &url, const QString &displayName,
-                                      int refreshIntervalMin)
+                                      int refreshIntervalMin, const QString &colorCode)
 {
     if (url.isEmpty()) {
         return QString();
@@ -461,7 +553,7 @@ QString CalendarService::subscribeIcs(const QString &url, const QString &display
     // 名字空着就用地址兜底，界面上至少能看出订阅的是什么
     const QString name = displayName.isEmpty() ? url : displayName;
 
-    DScheduleType::Ptr type = makeUserType(typeID, name, name, DDataBase::GOtherColorID);
+    DScheduleType::Ptr type = makeUserType(typeID, name, name, resolveColorID(colorCode));
     // 订阅来的日历通常是只读的，用 Read 而不是 User
     type->setPrivilege(DScheduleType::Read);
     type->setDescription(url);
@@ -487,6 +579,63 @@ QString CalendarService::subscribeIcs(const QString &url, const QString &display
     // 立刻拉一次，内容到了再发 scheduleUpdate
     m_ics->fetch(url, QString(), typeID);
     return typeID;
+}
+
+bool CalendarService::updateIcsSubscription(const QString &typeID, const QString &url,
+                                            const QString &displayName, int refreshIntervalMin,
+                                            const QString &colorCode)
+{
+    if (typeID.isEmpty() || url.isEmpty()) {
+        return false;
+    }
+
+    ScheduleDataBase::IcsSubscription sub = m_db->getIcsSubscription(typeID);
+    if (sub.typeID.isEmpty()) {
+        qCWarning(ServiceLogger) << "No ICS subscription to update for type:" << typeID;
+        return false;
+    }
+
+    const DScheduleType::Ptr type = getScheduleTypeByID(typeID);
+    if (type.isNull()) {
+        qCWarning(ServiceLogger) << "No schedule type to update for ICS subscription:" << typeID;
+        return false;
+    }
+
+    //名字空着就用地址兜底，跟 subscribeIcs() 一致
+    const QString name = displayName.isEmpty() ? url : displayName;
+    type->setTypeName(name);
+    type->setDisplayName(name);
+    type->setColorID(resolveColorID(colorCode));
+    type->setDescription(url);
+    if (!m_db->updateScheduleType(type)) {
+        qCWarning(ServiceLogger) << "Failed to update type for ICS subscription:" << typeID;
+        return false;
+    }
+
+    //地址换了就把同步状态清掉：lastSync/lastETag 记的是旧地址的，留着的话新地址
+    //要么等满一个刷新间隔才拉，要么拿旧 ETag 去问、被服务端当成「没变」而不返回内容
+    const bool urlChanged = (sub.url != url);
+    if (urlChanged) {
+        sub.lastSync = QDateTime();
+        sub.lastETag.clear();
+    }
+    sub.url = url;
+    sub.refreshIntervalMin = refreshIntervalMin;
+    if (!m_db->upsertIcsSubscription(sub)) {
+        qCWarning(ServiceLogger) << "Failed to update ICS subscription:" << typeID;
+        return false;
+    }
+
+    //改了地址/间隔/颜色之后重新开始算退避，不然刚失败过的订阅要等很久才试新地址
+    m_icsLastAttempt.remove(typeID);
+    m_icsFailCount.remove(typeID);
+
+    qCInfo(ServiceLogger) << "Updated ICS subscription:" << typeID << url;
+    emit scheduleTypeUpdate();
+
+    //立刻拉一次，让用户马上看到改动的效果（地址没变时带上旧 ETag 做增量）
+    m_ics->fetch(sub.url, sub.lastETag, typeID);
+    return true;
 }
 
 bool CalendarService::unsubscribeIcs(const QString &typeID)
@@ -578,9 +727,9 @@ QVector<CalendarService::IcsSubscriptionInfo> CalendarService::getIcsSubscriptio
             info.displayName = type->displayName();
             info.colorCode = type->getColorCode();
         }
-        //类型没了的孤儿订阅：名字用地址兜底，列表上至少能看出订阅的是什么
-        if (info.displayName.isEmpty()) {
-            info.displayName = sub.url;
+        //类型没了的孤儿订阅、或者名字当初就是拿地址兜的：给个短名，列表上能分清
+        if (info.displayName.isEmpty() || info.displayName == sub.url) {
+            info.displayName = friendlySubscriptionName(sub.url);
         }
 
         list.append(info);

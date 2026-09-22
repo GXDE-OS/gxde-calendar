@@ -74,8 +74,6 @@ public:
     DSchedule::List querySchedulesByKey(const QString &key);
     //根据重复规则查询一定范围内的日程
     DSchedule::List querySchedulesByRRule(const QString &key, const int &rruleType);
-    //获取需要提醒的日程信息
-    DSchedule::List getRemindSchedule();
 
     ///////////////类型信息
     /**

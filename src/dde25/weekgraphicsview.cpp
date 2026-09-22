@@ -32,6 +32,8 @@
 #include "scheduleitem.h"
 #include "schedulelayout.h"
 
+#include "schedule/calendarservice.h"
+
 #include <QApplication>
 #include <QContextMenuEvent>
 #include <QMenu>
@@ -348,7 +350,13 @@ void CWeekGraphicsView::updateHourPos()
 DSchedule::Ptr CWeekGraphicsView::scheduleAt(const QPoint &viewPos) const
 {
     CScheduleItem *item = dynamic_cast<CScheduleItem *>(itemAt(viewPos));
-    return item == nullptr ? DSchedule::Ptr() : item->getData();
+    // getType() 非 0 的是「还有 N 项」那个占位块（addScheduleItem 的 type 参数）：
+    // 它也攥着一条被挤掉的日程，但画出来的是「...」，不该拿它去编辑/删除，
+    // 参考实现在右键菜单和双击里都先按 getType() 把这类块挡掉
+    if (item == nullptr || item->getType() != 0) {
+        return DSchedule::Ptr();
+    }
+    return item->getData();
 }
 
 QDateTime CWeekGraphicsView::scheduleDateTimeAt(const QPoint &viewPos) const
@@ -382,22 +390,44 @@ void CWeekGraphicsView::mouseDoubleClickEvent(QMouseEvent *event)
 
 void CWeekGraphicsView::contextMenuEvent(QContextMenuEvent *event)
 {
+    // 点在日程块上时菜单给「编辑 / 删除」，空白处才是「新建日程」。
+    // 全天区（CAllDayView）覆写了 scheduleAt()，这里同样能取到它的日程块。
+    const DSchedule::Ptr schedule = scheduleAt(event->pos());
+
     const QDateTime dateTime = scheduleDateTimeAt(event->pos());
-    if (!dateTime.isValid()) {
+    if (schedule.isNull() && !dateTime.isValid()) {
         QGraphicsView::contextMenuEvent(event);
         return;
     }
 
-    popupMenu(event->globalPos(), dateTime);
+    popupMenu(event->globalPos(), dateTime, schedule);
     event->accept();
 }
 
-void CWeekGraphicsView::popupMenu(const QPoint &globalPos, const QDateTime &dateTime)
+void CWeekGraphicsView::popupMenu(const QPoint &globalPos, const QDateTime &dateTime,
+                                  const DSchedule::Ptr &schedule)
 {
     QMenu menu(this);
-    menu.addAction(tr("New Schedule"), this, [this, dateTime] {
-        emit signalCreateSchedule(dateTime);
-    });
+
+    if (!schedule.isNull()) {
+        // 菜单项与参考实现一致：编辑在前、删除在后
+        QAction *editAction = menu.addAction(tr("Edit"), this, [this, schedule] {
+            emit signalEditSchedule(schedule);
+        });
+        QAction *deleteAction = menu.addAction(tr("Delete"), this, [this, schedule] {
+            emit signalDeleteSchedule(schedule);
+        });
+        // 只读日历（ICS 订阅）的日程改不了（见 isScheduleEditable 的说明），
+        // 菜单上直接把「编辑」置灰，别让人点开一个全灰的表单
+        editAction->setEnabled(CalendarService::instance()->isScheduleEditable(schedule));
+        // 只读日历（ICS 订阅、节假日）把「删除」置灰，参考实现同样处理
+        deleteAction->setEnabled(CalendarService::instance()->isScheduleDeletable(schedule));
+    } else {
+        menu.addAction(tr("New Schedule"), this, [this, dateTime] {
+            emit signalCreateSchedule(dateTime);
+        });
+    }
+
     menu.exec(globalPos);
 }
 

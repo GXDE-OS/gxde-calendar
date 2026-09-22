@@ -32,6 +32,9 @@
 #include <QDateTime>
 #include <QWidget>
 
+#include <memory>
+
+#include "dde25common.h"
 #include "schedule/dschedule.h"
 
 class CDayMonthView;
@@ -66,8 +69,10 @@ signals:
     void signalsCurrentDateChanged(QDate date);
     // 请求新建日程（日程区右键菜单 / 双击空白处）
     void signalCreateSchedule(QDateTime dateTime);
-    // 请求编辑日程（双击日程块）
+    // 请求编辑日程（双击日程块 / 右键菜单「编辑」）
     void signalEditSchedule(DSchedule::Ptr schedule);
+    // 请求删除日程（右键菜单「删除」）
+    void signalDeleteSchedule(DSchedule::Ptr schedule);
 
 public slots:
     // 更新选择时间
@@ -81,6 +86,7 @@ private slots:
 protected:
     void resizeEvent(QResizeEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
+    void showEvent(QShowEvent *event) override;
 
 private:
     void initUI();
@@ -105,6 +111,12 @@ private:
     Qt::DayOfWeek m_firstWeekday = Qt::Monday;
     bool m_lunarVisible = true;
     int m_themetype = 0;
+
+    // 日程区滚轮的换天节流（见 DDE25::WheelStepper）
+    std::unique_ptr<DDE25::WheelStepper> m_wheelStepper;
+
+    // 隐藏期间攒下的刷新，显示出来时补做
+    bool m_dateRefreshPending = false;
 };
 
 #endif // DAYWINDOW_H

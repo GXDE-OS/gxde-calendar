@@ -20,9 +20,10 @@
  * DTK2Widget-Qt6.
  * ----------------------------------------------------------------------------
  * 移植自 dde-calendar（src/calendar-client/src/customWidget/timeedit.*）。
- * 差异：initUI() 末尾给 m_timeEdit 补一个隐藏的占位 QLineEdit，避开 Qt6 在
- *       QComboBox::setLineEdit() 抢走 QAbstractSpinBox 的编辑框之后的空指针解引用
- *       （原因见 initUI() 中的注释）。
+ * 差异（两处都是 Qt6 适配，原因见 initUI() 中的注释）：
+ * 1. initUI() 末尾给 m_timeEdit 补一个隐藏的占位 QLineEdit，避开 Qt6 在
+ *    QComboBox::setLineEdit() 抢走 QAbstractSpinBox 的编辑框之后的空指针解引用；
+ * 2. initUI() 里把 m_timeEdit 藏起来：Qt6 的样式给它画不透明底，会盖住编辑框里的时间。
  */
 
 #include "timeedit.h"
@@ -190,6 +191,16 @@ void CTimeEdit::initUI()
     setLineEdit(m_timeEdit->getLineEdit());
     m_timeEdit->setParent(this);
     setInsertPolicy(QComboBox::NoInsert);
+
+    // Qt6 适配：setLineEdit() 之后 m_timeEdit 只剩下「提供编辑框」这一个作用，真正显示
+    // 时间的是它被抢走的那个 QLineEdit（现在归 combo）。参考实现（Qt5 + DDE 的 DStyle）
+    // 下这个 spinbox 画的是透明底、边框又与 combo 的边框重合，所以看上去只有 combo 一个框；
+    // 而 Qt6 这套样式给它画的是不透明底，Qt 又按创建顺序绘制子控件 —— m_timeEdit 是在
+    // setLineEdit() 之后才 setParent(this) 的，排在编辑框后面，于是它的不透明底正好糊住
+    // 编辑框里的时间文字：弹窗里那一格永远是空的（拾色器/时间下拉都一样）。
+    // 这里把它藏起来，让它不参与绘制。控件本身还在：m_timeEdit->time()、
+    // CCustomTimeEdit::signalUpdateFocus 走的都是 QObject 层的连接，与可见性无关。
+    m_timeEdit->hide();
 
     // Qt6 适配：上面 setLineEdit() 把 m_timeEdit 自己的 QLineEdit 抢过来当编辑框，
     // 它的父对象随之变成 this，于是 m_timeEdit 名下再没有 QLineEdit 子对象了。

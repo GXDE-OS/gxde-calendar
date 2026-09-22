@@ -1,16 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="14px" height="14px" viewBox="0 0 14 14" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-    <title>编组 21</title>
-    <g id="页面-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-        <g id="自定义日程" transform="translate(-197.000000, -364.000000)" fill="#000000">
-            <g id="编组备份-18" transform="translate(164.000000, 239.000000)">
-                <g id="自定义提醒-重复" transform="translate(0.000000, 114.000000)">
-                    <g id="编组" transform="translate(33.000000, 11.000000)">
-                        <rect id="矩形" x="6" y="0" width="2" height="14" rx="1"></rect>
-                        <rect id="矩形" transform="translate(7.000000, 7.000000) rotate(90.000000) translate(-7.000000, -7.000000) " x="6" y="0" width="2" height="14" rx="1"></rect>
-                    </g>
-                </g>
-            </g>
-        </g>
+<!--
+    浅色主题的「新建」加号。原图（dde-calendar 的 dde_calendar_create）是 14x14 画布上
+    两根 2px 宽的圆角矩形，铺满整个画布；在 16px 图标尺寸下按 16/14 缩放，笔画渲染出来
+    约 2.3px，又粗、末端离按钮边缘也只剩 4px。
+    现在改成 16x16 画布、1px 描边的折线：圆头端点各多出 0.5px，墨迹正好是居中的 14x14，
+    画布内留 1px，24x24 按钮的图标区本就内缩 4px，于是加号末端离按钮边缘 5px。
+    深色主题见 dde_calendar_create_dark.svg。
+-->
+<svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <g fill="none" stroke="#000000" stroke-width="1" stroke-linecap="round">
+        <polyline points="8 1.5 8 14.5"/>
+        <polyline points="1.5 8 14.5 8"/>
     </g>
 </svg>

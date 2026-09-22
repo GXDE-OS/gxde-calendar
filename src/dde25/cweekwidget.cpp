@@ -65,7 +65,7 @@ void CWeekWidget::paintEvent(QPaintEvent *event)
 
     if (m_autoFontSizeByWindow) {
         // 字体跟随界面大小
-        const qreal w = this->width() / 7;
+        const qreal w = this->width() / 7.0;
         const qreal h = this->height();
         qreal r = w > h ? h : w;
 
@@ -73,7 +73,10 @@ void CWeekWidget::paintEvent(QPaintEvent *event)
             r *= 0.8;
         }
 
-        font.setPixelSize(int(r / 20.0 * 12));
+        // 参考实现直接取 r/20*12，r 被这一行的高度上限（40）顶住，于是星期名比
+        // 迷你月历里的日期数字还大。这行是标签，封顶到 12（与固定字号分支一致），
+        // 只在面板窄到装不下时才跟着缩
+        font.setPixelSize(qMin(int(r / 20.0 * 12), DDECalendar::FontSizeTwelve));
     } else {
         font.setPixelSize(DDECalendar::FontSizeTwelve);
     }

@@ -17,10 +17,12 @@
 
 #include "subscribeicsdlg.h"
 
+#include "dde25/colorseletorwidget.h"
 #include "dde25/dde25common.h"
 
 #include <QAbstractButton>
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QUrl>
@@ -48,6 +50,19 @@ bool isAcceptableUrl(const QString &text)
     return scheme == QLatin1String("http") || scheme == QLatin1String("https");
 }
 
+//库里存的间隔不一定是下拉框里那几档（老数据、别处写进来的值），编辑时按这个
+//拼一个条目显示出来，免得选不中就被静默改成默认档
+QString intervalText(int minutes)
+{
+    if (minutes % (24 * 60) == 0) {
+        return QCoreApplication::translate("CSubscribeIcsDlg", "%1 d").arg(minutes / (24 * 60));
+    }
+    if (minutes % 60 == 0) {
+        return QCoreApplication::translate("CSubscribeIcsDlg", "%1 h").arg(minutes / 60);
+    }
+    return QCoreApplication::translate("CSubscribeIcsDlg", "%1 min").arg(minutes);
+}
+
 } // namespace
 
 CSubscribeIcsDlg::CSubscribeIcsDlg(QWidget *parent)
@@ -59,16 +74,17 @@ CSubscribeIcsDlg::CSubscribeIcsDlg(QWidget *parent)
     initConnection();
     setTheMe(DDE25::themeType());
     //DDialog::updateSize() 只在没被手动 resize 过时才自己算尺寸，所以这里给足：
-    //标题 + 三组标签输入框 + 按钮，矮了会把内容压扁
-    resize(440, 360);
+    //标题 + 四组标签输入框 + 按钮，矮了会把内容压扁
+    resize(440, 420);
 }
 
 void CSubscribeIcsDlg::initUI()
 {
-    //标签 + 输入框，竖向排三组
+    //标签 + 输入框，竖向排四组
     m_urlLabel = new QLabel(tr("Address"));
     m_nameLabel = new QLabel(tr("Name"));
     m_intervalLabel = new QLabel(tr("Refresh Interval"));
+    m_colorLabel = new QLabel(tr("Color"));
 
     m_urlEdit = new DLineEdit;
     m_urlEdit->setPlaceholderText(QStringLiteral("https://example.com/calendar.ics"));
@@ -91,6 +107,10 @@ void CSubscribeIcsDlg::initUI()
     m_intervalCombo->addItem(tr("Every week"), 7 * 24 * 60);
     m_intervalCombo->setCurrentIndex(4);
 
+    //颜色：跟新建日历、日程弹窗用的是同一个控件（九色 + 自定义取色器）
+    m_colorSelector = new ColorSeletorWidget(this);
+    m_colorSelector->resetColorButton();
+
     QVBoxLayout *contentLayout = new QVBoxLayout;
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(6);
@@ -102,6 +122,9 @@ void CSubscribeIcsDlg::initUI()
     contentLayout->addSpacing(6);
     contentLayout->addWidget(m_intervalLabel);
     contentLayout->addWidget(m_intervalCombo);
+    contentLayout->addSpacing(6);
+    contentLayout->addWidget(m_colorLabel);
+    contentLayout->addWidget(m_colorSelector);
     contentLayout->addStretch();
 
     m_gwi = new DFrame(this);
@@ -117,10 +140,12 @@ void CSubscribeIcsDlg::initUI()
     //「订阅」要校验地址之后再关，所以不能点一下就关（参考 scheduledlg 的做法）
     setOnButtonClickedClose(false);
 
+    //只定高不定宽：宽度由 DDialog 的按钮行平分，两个按钮各占一半（写死 140 的话
+    //按钮会缩在中间，两边各空一条——同 CScheduleCtrlDlg::addPushButton 的说明）
     const int buttonCount = this->buttonCount();
     for (int i = 0; i < buttonCount; i++) {
         QAbstractButton *button = getButton(i);
-        button->setFixedSize(140, 36);
+        button->setFixedHeight(36);
     }
     m_okButton = getButton(buttonCount - 1);
 }
@@ -154,6 +179,7 @@ void CSubscribeIcsDlg::setTheMe(const int type)
         m_urlLabel->setStyleSheet(style);
         m_nameLabel->setStyleSheet(style);
         m_intervalLabel->setStyleSheet(style);
+        m_colorLabel->setStyleSheet(style);
     }
 }
 
@@ -191,4 +217,42 @@ QString CSubscribeIcsDlg::displayName() const
 int CSubscribeIcsDlg::refreshIntervalMin() const
 {
     return m_intervalCombo->currentData().toInt();
+}
+
+QString CSubscribeIcsDlg::colorCode() const
+{
+    const DTypeColor::Ptr color = m_colorSelector->getSelectedColorInfo();
+    return color.isNull() ? QString() : color->colorCode();
+}
+
+void CSubscribeIcsDlg::setEditData(const CalendarService::IcsSubscriptionInfo &info)
+{
+    setTitle(tr("Edit Subscription"));
+    //按钮文字跟着改：还写「订阅」的话看着像又要新建一个
+    if (m_okButton != nullptr) {
+        m_okButton->setText(tr("Save", "button"));
+    }
+
+    m_urlEdit->setText(info.url);
+    m_nameEdit->setText(info.displayName);
+    m_nameEdit->setPlaceholderText(info.url);
+
+    //间隔对不上现成档位（老数据、别处写进来的值）就补一个条目，不然选不中会被
+    //静默改成别的档
+    int index = m_intervalCombo->findData(info.refreshIntervalMin);
+    if (index < 0) {
+        m_intervalCombo->addItem(intervalText(info.refreshIntervalMin), info.refreshIntervalMin);
+        index = m_intervalCombo->count() - 1;
+    }
+    m_intervalCombo->setCurrentIndex(index);
+
+    //按色值选中对应的色块；色值对不上任何一块（比如类型颜色被删了）时
+    //setSelectedColor() 会把它加成一个自定义色块，也算选中了
+    if (!info.colorCode.isEmpty()) {
+        DTypeColor color;
+        color.setColorCode(info.colorCode);
+        m_colorSelector->setSelectedColor(color);
+    }
+
+    updateAcceptState();
 }

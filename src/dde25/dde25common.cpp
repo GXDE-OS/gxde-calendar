@@ -88,6 +88,68 @@ QVector<QDate> weekDates(const QDate &date, Qt::DayOfWeek firstDay)
     return days;
 }
 
+WheelStepper::WheelStepper(std::function<void(int)> handler, int cooldownMs)
+    : m_handler(std::move(handler))
+{
+    m_cooldown.setSingleShot(true);
+    m_cooldown.setInterval(cooldownMs);
+    // 用 m_cooldown 自身作 context：this 析构时连接一并失效
+    QObject::connect(&m_cooldown, &QTimer::timeout, &m_cooldown, [this] { flush(); });
+}
+
+void WheelStepper::step(int delta)
+{
+    if (delta == 0 || !m_handler) {
+        return;
+    }
+
+    // 一格 = 120（八分之一度）。高分辨率滚轮会把一格拆成几十个 delta 很小的事件，
+    // 只按事件个数记档的话，转一格就能顶几十档（G502 X 这类 hi-res 滚轮实测一格跳
+    // 45 周），所以这里按角度累计，凑够一格才记一档，不足一格的余量留给下一次。
+    m_remainder += delta;
+    const int steps = m_remainder / kWheelUnit;
+    if (steps == 0) {
+        return;
+    }
+    m_remainder -= steps * kWheelUnit;
+
+    push(steps);
+}
+
+void WheelStepper::nudge(int steps)
+{
+    // 键盘连发一次就是一档，不参与角度累计（否则一次按键不够 120 会毫无反应）
+    push(steps);
+}
+
+void WheelStepper::push(int steps)
+{
+    if (steps == 0 || !m_handler) {
+        return;
+    }
+
+    if (m_cooldown.isActive()) {
+        // 冷却期内不重建，只记账，等冷却结束合并跳一次
+        m_pending += steps;
+        return;
+    }
+
+    m_handler(steps);
+    m_cooldown.start();
+}
+
+void WheelStepper::flush()
+{
+    if (m_pending == 0) {
+        return;
+    }
+
+    const int steps = m_pending;
+    m_pending = 0;
+    m_handler(steps);
+    m_cooldown.start();
+}
+
 LunarCache *LunarCache::instance()
 {
     static LunarCache cache;

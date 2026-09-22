@@ -32,6 +32,9 @@
 #include <QVector>
 #include <QWidget>
 
+#include <memory>
+
+#include "dde25common.h"
 #include "schedule/dschedule.h"
 
 class CMonthDayView;
@@ -63,18 +66,21 @@ signals:
     void signalsCurrentDateChanged(QDate date);
     // 请求新建日程（右键菜单 / 双击空白格）
     void signalCreateSchedule(QDateTime dateTime);
-    // 请求编辑日程（双击日程块）
+    // 请求编辑日程（双击日程块 / 右键菜单「编辑」）
     void signalEditSchedule(DSchedule::Ptr schedule);
+    // 请求删除日程（右键菜单「删除」）
+    void signalDeleteSchedule(DSchedule::Ptr schedule);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
+    void showEvent(QShowEvent *event) override;
 
 private:
     void setYearData();
     void updateLunarYearLabel();
-    // 切换月份：next 为 true 时下一个月
-    void slideMonth(bool next);
+    // 按 m_currentDate 重建子控件（显示出来时补做隐藏期间攒下的刷新）
+    void refreshCurrentDate();
 
     CMonthView *m_monthView = nullptr;
     CMonthDayView *m_monthDayView = nullptr;
@@ -82,9 +88,14 @@ private:
     QLabel *m_yearLunarLabel = nullptr;
     QPushButton *m_today = nullptr;
 
+    // 月份滚轮节流（见 DDE25::WheelStepper）
+    std::unique_ptr<DDE25::WheelStepper> m_wheelStepper;
+
     QDate m_currentDate;
     QDateTime m_currentDateTime = QDateTime::currentDateTime();
     int m_themetype = 0;
+    // 隐藏期间攒下的刷新，显示出来时补做
+    bool m_dateRefreshPending = false;
 };
 
 #endif // MONTHWINDOW_H

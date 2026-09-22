@@ -221,8 +221,9 @@ private:
 
     QLabel *m_adllDayLabel = nullptr;
     QCheckBox *m_allDayCheckbox = nullptr;
-    QLabel *m_remindSetLabel = nullptr;
-    QComboBox *m_rmindCombox = nullptr;
+    //提醒（m_remindSetLabel / m_rmindCombox）连同 DSchedule::AlarmType 一起删掉了：
+    //本项目没有提醒引擎（没有 daemon，CalendarService::getRemindSchedule() 也没有
+    //调用者），下拉框选出来的提醒从来不会响
     QLabel *m_beginrepeatLabel = nullptr;
     QComboBox *m_beginrepeatCombox = nullptr;
     QLabel *m_endrepeatLabel = nullptr;

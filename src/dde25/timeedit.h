@@ -22,8 +22,8 @@
  * 移植自 dde-calendar（src/calendar-client/src/customWidget/timeedit.*）。
  *
  * 差异：
- * 1. DTK2Widget 没有 DComboBox，基类换成 QComboBox。参考实现里 DComboBox 唯一
- *    额外的能力是给当前项画对勾，这里不需要；
+ * 1. DTK2Widget 没有 DComboBox，基类换成 QComboBox。参考实现里 DComboBox 只是在
+ *    showPopup() 里做了一次 setMaxVisibleItems(16)，本项目用不到；
  * 2. 构造函数原来读 CalendarManager::getInstance()->getTimeFormat() 并连
  *    signalTimeFormatChanged，本项目没有这个全局时间制式管理器，默认按
  *    24 小时制（"hh:mm"），需要时由调用方走 setTimeFormat()；

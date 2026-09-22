@@ -57,6 +57,11 @@ public:
     void updateJobType();
     QString getCurrentJobTypeNo();
     void setCurrentJobTypeNo(const QString &strJobTypeNo);
+    //列表里有没有这个日历（编辑弹窗用来判断日程原本的类型还能不能选上）
+    bool containsJobTypeNo(const QString &strJobTypeNo) const;
+    //把一个不在列表里的日历插到指定位置。编辑弹窗用：日程所属的类型可能不展示在
+    //列表里（历史数据把日程建进了不展示的节假日类型），得如实显示出来
+    void insertJobTypeItem(int idx, const DScheduleType::Ptr &type);
 
     void setAlert(bool isAlert);
     bool isAlert() const;

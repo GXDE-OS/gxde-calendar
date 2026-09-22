@@ -49,6 +49,7 @@ public:
     void setStatusText(const QString &text, bool error = false);
 
 signals:
+    void signalEdit(const QString &typeID);
     void signalRefresh(const QString &typeID);
     void signalRemove(const QString &typeID);
 
@@ -72,6 +73,7 @@ private:
     QLabel *m_nameLabel = nullptr;
     QLabel *m_urlLabel = nullptr;
     QLabel *m_statusLabel = nullptr;
+    DPushButton *m_editButton = nullptr;
     DPushButton *m_refreshButton = nullptr;
     DPushButton *m_removeButton = nullptr;
 };
@@ -88,6 +90,7 @@ private slots:
     void slotAddSubscription();
     void slotImportFromFile();
     void slotRefreshAll();
+    void slotEdit(const QString &typeID);
     void slotRefreshOne(const QString &typeID);
     void slotRemove(const QString &typeID);
     void slotRefreshFinished(const QString &typeID, bool ok, const QString &error);

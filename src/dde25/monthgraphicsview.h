@@ -24,8 +24,9 @@
  * dde-calendar 的 CMonthGraphicsview 继承自 DragInfoGraphicsView（拖拽建日程 /
  * 键盘导航 / 右键菜单）。这里直接继承 QGraphicsView，保留 42 格布局、农历、
  * 班休、今日圆点、圆角等绘制逻辑，只补上「双击日程块编辑 / 右键或双击空白格
- * 新建」两个入口（往外发信号，由 CalendarWindow 打开弹窗），拖拽改期与键盘
- * 导航留到后续阶段接入。
+ * 新建」两个入口，外加日程块的右键菜单（编辑 / 删除，对齐参考实现
+ * draginfographicsview.cpp 的右键菜单；确认弹窗与数据层调用在 CalendarWindow
+ * 里，视图只往外发信号），拖拽改期与键盘导航留到后续阶段接入。
  *
  * 差异：参考实现的新建时间取自 CScheduleCoorManage::getDate(scenePos)，但它的
  * 月视图从不调用 setRange（只有周/日视图在 cweekdaygraphicsview.cpp 里设过），
@@ -77,8 +78,10 @@ signals:
     void signalAngleDelta(int delta);
     // 请求新建日程（右键菜单 / 双击空白格），携带要新建的日期与时刻
     void signalCreateSchedule(QDateTime dateTime);
-    // 请求编辑日程（双击日程块）
+    // 请求编辑日程（双击日程块 / 右键菜单「编辑」）
     void signalEditSchedule(DSchedule::Ptr schedule);
+    // 请求删除日程（右键菜单「删除」，确认弹窗与数据层调用在 CalendarWindow 里）
+    void signalDeleteSchedule(DSchedule::Ptr schedule);
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
@@ -93,8 +96,9 @@ private:
     QDate dateAt(const QPointF &scenePos) const;
     // 视口坐标下的日程块，不是日程块时返回 nullptr
     CMonthScheduleItem *scheduleItemAt(const QPoint &viewPos) const;
-    // 右键菜单：目前只有「新建日程」，编辑/删除在后续阶段接入
-    void popupMenu(const QPoint &globalPos, const QDate &date);
+    // 右键菜单：schedule 非空（点中日程块）给「编辑 / 删除」，对齐参考实现
+    // draginfographicsview.cpp 的右键菜单；为空（点中空白格）给「新建日程」
+    void popupMenu(const QPoint &globalPos, const QDate &date, const DSchedule::Ptr &schedule);
 
     void updateSize();
     // 从 DDE25::LunarCache 读取当前 42 格对应的农历文本

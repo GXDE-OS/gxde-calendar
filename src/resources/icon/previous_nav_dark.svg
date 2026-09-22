@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- 深色主题版「上一页」箭头，几何与 previous_nav.svg 完全一致，仅描边改为白色。 -->
+<!-- 深色主题版「上一页」箭头：几何与 previous_nav.svg 完全一致，
+     描边换成 DTK2 深色主题箭头用的 #DDDDDD（themes/dark/images/arrow_up_normal.svg）。 -->
 <svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg">
-    <polyline points="10.5 3 5.5 8 10.5 13" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <polyline points="11 2 5 8 11 14" fill="none" stroke="#DDDDDD" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

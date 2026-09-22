@@ -60,6 +60,10 @@ CScheduleDlg::CScheduleDlg(int type, QWidget *parent, const bool isAllDay)
 
     if (type == 1) {
         m_titleLabel->setText(tr("New Event"));
+        //新建的日程默认落到本地日历。下拉框自己会选第一项，而列表第一项是
+        //「Work」——参考实现里那是帐户自带的类型，默认选中谁由帐户决定；
+        //本项目没有帐户体系，Local 才是 initSysType() 给用户备的那个可读写日历
+        m_typeComBox->setCurrentJobTypeNo(CalendarService::instance()->getLocalTypeID());
         m_beginDateEdit->setDate(QDate::currentDate());
         int hours = QTime::currentTime().hour();
         int minnutes = QTime::currentTime().minute() % DDECalendar::QuarterOfAnhourWithMinute;
@@ -75,8 +79,9 @@ CScheduleDlg::CScheduleDlg(int type, QWidget *parent, const bool isAllDay)
         m_titleLabel->setText(tr("Edit Event"));
     }
     //参考实现这里会根据「是否支持 UID」把高度减掉 36（那是账户栏那一行），
-    //本项目没有账户栏，直接就用没有账户栏的高度
-    setFixedSize(dialog_width, 561 - 36);
+    //本项目没有账户栏，直接就用没有账户栏的高度；再减掉 46 是删掉的提醒行
+    //（行高 36 + 行间距 10，见 resize() 里的说明）
+    setFixedSize(dialog_width, 561 - 36 - 46);
 
     setTheMe(DDE25::themeType());
 
@@ -103,7 +108,15 @@ void CScheduleDlg::setData(const DSchedule::Ptr &info)
     }
 
     if (m_scheduleDataInfo) {
-        m_typeComBox->setCurrentJobTypeNo(m_scheduleDataInfo->scheduleTypeID());
+        const QString typeID = m_scheduleDataInfo->scheduleTypeID();
+        //日历下拉里没有这个类型时（历史数据把日程建进了不展示的节假日类型）把它插到
+        //最前面，让弹窗如实显示这条日程在哪个日历里：不补这一项的话，下拉框会停在
+        //列表第一项上，用户一保存日程就被悄悄改到别的日历去了
+        const DScheduleType::Ptr type = CalendarService::instance()->getScheduleTypeByID(typeID);
+        if (!type.isNull() && !m_typeComBox->containsJobTypeNo(typeID)) {
+            m_typeComBox->insertJobTypeItem(0, type);
+        }
+        m_typeComBox->setCurrentJobTypeNo(typeID);
     }
 
     const QDateTime displayStart = info->allDay() ? info->dtStart() : info->dtStart().toLocalTime();
@@ -262,15 +275,6 @@ bool CScheduleDlg::createSchedule(const QString &scheduleTypeId)
         return false;
     }
     schedule->setAllDay(m_allDayCheckbox->isChecked());
-
-    //设置提醒规则
-    DSchedule::AlarmType alarmType;
-    if (schedule->allDay()) {
-        alarmType = static_cast<DSchedule::AlarmType>(m_rmindCombox->currentIndex() + 8);
-    } else {
-        alarmType = static_cast<DSchedule::AlarmType>(m_rmindCombox->currentIndex());
-    }
-    schedule->setAlarmType(alarmType);
 
     //设置重复规则
     DSchedule::RRuleType rruleType;
@@ -491,18 +495,7 @@ void CScheduleDlg::slotBDateEidtInfo(const QDate &date)
 
 void CScheduleDlg::slotallDayStateChanged(int state)
 {
-    m_rmindCombox->clear();
-
     if (!state) {
-        m_rmindCombox->addItem(tr("Never"));
-        m_rmindCombox->addItem(tr("At time of event"));
-        m_rmindCombox->addItem(tr("15 minutes before"));
-        m_rmindCombox->addItem(tr("30 minutes before"));
-        m_rmindCombox->addItem(tr("1 hour before"));
-        m_rmindCombox->addItem(tr("1 day before"));
-        m_rmindCombox->addItem(tr("2 days before"));
-        m_rmindCombox->addItem(tr("1 week before"));
-        m_rmindCombox->setCurrentIndex(2);
         m_beginTimeEdit->setVisible(true);
         m_endTimeEdit->setVisible(true);
 
@@ -527,12 +520,6 @@ void CScheduleDlg::slotallDayStateChanged(int state)
             m_endTimeEdit->setTime(m_EndDate.time());
         }
     } else {
-        m_rmindCombox->addItem(tr("Never"));
-        m_rmindCombox->addItem(tr("On start day (9:00 AM)"));
-        m_rmindCombox->addItem(tr("1 day before"));
-        m_rmindCombox->addItem(tr("2 days before"));
-        m_rmindCombox->addItem(tr("1 week before"));
-        m_rmindCombox->setCurrentIndex(2);
         m_beginTimeEdit->setVisible(false);
         m_endTimeEdit->setVisible(false);
 
@@ -751,11 +738,6 @@ void CScheduleDlg::changeEvent(QEvent *event)
                                                                  DDECalendar::NewScheduleLabelWidth);
     m_endTimeLabel->setText(str_endTimeLabel);
 
-    QFontMetrics fontWidth_remindSetLabel(mlabelF);
-    QString str_remindSetLabel = fontWidth_remindSetLabel.elidedText(tr("Remind Me:"), Qt::ElideRight,
-                                                                     DDECalendar::NewScheduleLabelWidth);
-    m_remindSetLabel->setText(str_remindSetLabel);
-
     QFontMetrics fontWidth_beginRepeatLabel(mlabelF);
     QString str_beginRepeatLabel = fontWidth_beginRepeatLabel.elidedText(tr("Repeat:"), Qt::ElideRight,
                                                                          DDECalendar::NewScheduleLabelWidth);
@@ -871,6 +853,17 @@ void CScheduleDlg::initUI()
         m_textEdit->setAcceptRichText(false);
 
         m_textEdit->setPlaceholderText(tr("New Event"));
+
+        // 与 dde-calendar 不同：把 DTextEdit 内部的 TextEditInsideFrame 压到视口下面。
+        // DTK2Widget 的 DTextEdit 用一块 72% 白的 QFrame（objectName 为
+        // TextEditInsideFrame）当底板，给控件画那圈圆角白底和描边；本来该压在视口
+        // （画文字的那层，本身透明）底下，在这套 Qt6 + DTK2Widget 里却排在视口上面，
+        // 于是把文字盖成灰的：输入什么都是 #bebebe，而不是 #1a1a1a。压到底层后白底
+        // 和描边照旧（视口是透明的），文字恢复成正常黑。深色主题同理。
+        if (QWidget *insideFrame = m_textEdit->findChild<QWidget *>(QStringLiteral("TextEditInsideFrame"))) {
+            insideFrame->lower();
+        }
+
         //设置关联控件，用于QTextEdit控件捕获MouseButtonPress等事件
         QWidget *mpContentWidget = m_textEdit->viewport();
         //设置事件过滤器
@@ -1032,35 +1025,8 @@ void CScheduleDlg::initUI()
         maintlayout->addWidget(widget);
     }
 
-    //提醒
-    {
-        QHBoxLayout *rminQLabellayout = new QHBoxLayout;
-        rminQLabellayout->setSpacing(0);
-        rminQLabellayout->setContentsMargins(0, 0, 0, 0);
-        m_remindSetLabel = new QLabel();
-        QFontMetrics fontWidth_remindSetLabel(mlabelF);
-        QString str_remindSetLabel = fontWidth_remindSetLabel.elidedText(tr("Remind Me:"), Qt::ElideRight,
-                                                                         DDECalendar::NewScheduleLabelWidth);
-        m_remindSetLabel->setToolTip(tr("Remind Me"));
-        m_remindSetLabel->setText(str_remindSetLabel);
-        m_remindSetLabel->setFont(mlabelF);
-        m_remindSetLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-        m_remindSetLabel->setFixedSize(label_Fixed_Width, item_Fixed_Height);
-
-        m_rmindCombox = new QComboBox(this);
-        //设置对象名称和辅助显示名称
-        m_rmindCombox->setObjectName("RmindComboBox");
-        m_rmindCombox->setAccessibleName("RmindComboBox");
-        m_rmindCombox->setFixedSize(200, item_Fixed_Height);
-        m_rmindCombox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        rminQLabellayout->addWidget(m_remindSetLabel);
-        rminQLabellayout->addWidget(m_rmindCombox);
-        rminQLabellayout->addStretch();
-        QWidget *widget = new QWidget;
-        widget->setLayout(rminQLabellayout);
-        widget->setFixedHeight(item_Fixed_Height);
-        maintlayout->addWidget(widget);
-    }
+    //提醒：本项目没有提醒引擎（没有 daemon，getRemindSchedule 也没有调用者），
+    //这一行连同 DSchedule::AlarmType 一起删掉了，见 scheduledlg.h 的说明
 
     //重复
     {
@@ -1187,11 +1153,16 @@ void CScheduleDlg::initUI()
     if (m_type == 1)
         slotallDayStateChanged(0);
     //添加按钮
-    addButton(tr("Cancel", "button"));
+    //编辑已有日程（m_type == 0）时「取消」用警示色：这个按钮一按就丢掉整份改动，
+    //配色上让它跟新建态区分开（参考实现两个状态都是普通按钮，这是本项目的调整）
+    addButton(tr("Cancel", "button"), false,
+              m_type == 0 ? DDialog::ButtonWarning : DDialog::ButtonNormal);
     addButton(tr("Save", "button"), false, DDialog::ButtonRecommend);
+    //只定高不定宽：DDialog 的按钮行是零边距的 QHBoxLayout，宽度留给它平分，
+    //两个按钮各占一半（参考实现这里写死 189，对话框 468 宽，两侧会各空出一条）
     for (int i = 0; i < buttonCount(); i++) {
         QAbstractButton *button = getButton(i);
-        button->setFixedSize(189, 36);
+        button->setFixedHeight(36);
     }
 }
 
@@ -1245,13 +1216,7 @@ void CScheduleDlg::initJobTypeComboBox()
 
 void CScheduleDlg::initRmindRpeatUI()
 {
-    //提醒规则
-    if (m_scheduleDataInfo->allDay()) {
-        m_rmindCombox->setCurrentIndex(m_scheduleDataInfo->getAlarmType() - 8);
-    } else {
-        m_rmindCombox->setCurrentIndex(m_scheduleDataInfo->getAlarmType());
-    }
-
+    //提醒规则已删（本项目没有提醒引擎），这里只剩重复规则的回填
     //重复规则
     if (m_scheduleDataInfo->lunnar()) {
         //如果为农历
@@ -1323,8 +1288,8 @@ void CScheduleDlg::setTabFouseOrder()
     setTabOrder(m_beginDateEdit, m_beginTimeEdit);
 //    setTabOrder(m_beginTimeEdit, m_endDateEdit);
     setTabOrder(m_endDateEdit, m_endTimeEdit);
-//    setTabOrder(m_endTimeEdit, m_rmindCombox);
-    setTabOrder(m_rmindCombox, m_beginrepeatCombox);
+    //提醒下拉框删掉后，结束时间后面直接接重复
+    setTabOrder(m_endTimeEdit, m_beginrepeatCombox);
     setTabOrder(m_beginrepeatCombox, m_endrepeatCombox);
     //结束于次数，设置tab顺序
     //如果为重复日程
@@ -1387,16 +1352,27 @@ bool CScheduleDlg::isShowLunar()
  */
 void CScheduleDlg::setShowState(bool jobIsLunar)
 {
-    //参考实现这里先按帐户/CalDAV 的读写权限算 canEdit，本项目没有只读来源，
-    //恒为可编辑
-    const bool canEdit = true;
+    //参考实现这里是
+    //canEdit = !m_accountItem.isNull() && m_accountItem->isCanSyncShedule()
+    //          && (!editingExistingSchedule || canWriteCurrentCalDavCollection());
+    //本项目没有 CalDAV 账户，唯一的只读来源是 ICS 订阅：订阅日程的内容属于远端，
+    //本地改完下一次刷新就被整批覆盖，所以这类日程整个表单置灰，只当详情看
+    //（新建时 m_scheduleDataInfo 为空，恒可编辑）
+    const bool canEdit = m_scheduleDataInfo.isNull()
+            || CalendarService::instance()->isScheduleEditable(m_scheduleDataInfo);
 
     m_solarRadioBtn->setEnabled(canEdit);
     m_lunarRadioBtn->setEnabled(canEdit);
     setWidgetEnabled(canEdit);
     getButton(1)->setEnabled(canEdit);
 
-    if (isShowLunar()) {
+    //只读日程到此为止：下面两个分支都会往回设 setWidgetEnabled()/保存按钮的状态，
+    //非农历制式那支还会 setWidgetEnabled(!jobIsLunar)、getButton(1)->setEnabled(!jobIsLunar)，
+    //读的日程不拦一下就会被重新点亮（参考实现同样把整个分支挂在 !canEdit 后面）
+    if (!canEdit) {
+        m_solarRadioBtn->setEnabled(false);
+        m_lunarRadioBtn->setEnabled(false);
+    } else if (isShowLunar()) {
         m_lunarRadioBtn->setEnabled(true);
         m_beginDateEdit->setLunarCalendarStatus(jobIsLunar);
         m_endDateEdit->setLunarCalendarStatus(jobIsLunar);
@@ -1432,7 +1408,6 @@ void CScheduleDlg::setWidgetEnabled(bool isEnabled)
     m_beginTimeEdit->setEnabled(isEnabled);
     m_endDateEdit->setEnabled(isEnabled);
     m_endTimeEdit->setEnabled(isEnabled);
-    m_rmindCombox->setEnabled(isEnabled);
     m_beginrepeatCombox->setEnabled(isEnabled);
     m_endrepeatCombox->setEnabled(isEnabled);
     m_endrepeattimes->setEnabled(isEnabled);
@@ -1503,14 +1478,23 @@ void CScheduleDlg::resize()
         h += 18 + 10;
     }
 
-    //573: 默认界面高度, h: 新增控件高度
-    setFixedSize(dialog_width, 573 + h);
+    //573: 默认界面高度, h: 新增控件高度, 46: 删掉的提醒行（行高 36 + 行间距 10）
+    setFixedSize(dialog_width, 573 - 46 + h);
 }
 
 void CScheduleDlg::setOkBtnEnabled()
 {
     QAbstractButton *m_OkBt = getButton(1);
     if (m_OkBt == nullptr) {
+        return;
+    }
+
+    //参考实现在这里还有一道 canWriteCurrentCalDavCollection() 的闸。本项目的只读来源是
+    //订阅日历（见 setShowState() 的 canEdit），这里得再拦一次：改全天、改重复、改描述
+    //都会调本函数，没有这道闸的话 setShowState() 刚置灰的保存按钮会被重新点亮。
+    if (!m_scheduleDataInfo.isNull()
+            && !CalendarService::instance()->isScheduleEditable(m_scheduleDataInfo)) {
+        m_OkBt->setEnabled(false);
         return;
     }
 

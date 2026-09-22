@@ -16,6 +16,7 @@
  */
 
 #include "calendarviews.h"
+#include "dde25/dde25common.h"
 
 #include <QPainter>
 #include <QLocale>
@@ -25,7 +26,6 @@
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
-#include <QStyle>
 
 namespace {
 const QColor AccentColor("#2ca7f8");
@@ -77,7 +77,7 @@ YearView::YearView(QWidget *parent) : QWidget(parent) {
     todayLayout->setSpacing(0);
 
     m_prevButton = new QPushButton(m_todayFrame);
-    m_prevButton->setIcon(style()->standardIcon(QStyle::SP_ArrowLeft));
+    m_prevButton->setIcon(DDE25::navArrowIcon(false, DDE25::themeType()));
     m_prevButton->setIconSize(QSize(16, 16));
     m_prevButton->setFixedSize(36, 36);
     m_prevButton->setFocusPolicy(Qt::NoFocus);
@@ -89,7 +89,7 @@ YearView::YearView(QWidget *parent) : QWidget(parent) {
     m_todayButton->setCursor(Qt::PointingHandCursor);
 
     m_nextButton = new QPushButton(m_todayFrame);
-    m_nextButton->setIcon(style()->standardIcon(QStyle::SP_ArrowRight));
+    m_nextButton->setIcon(DDE25::navArrowIcon(true, DDE25::themeType()));
     m_nextButton->setIconSize(QSize(16, 16));
     m_nextButton->setFixedSize(36, 36);
     m_nextButton->setFocusPolicy(Qt::NoFocus);
@@ -182,7 +182,7 @@ void YearView::paintEvent(QPaintEvent *event) {
     headerFont.setBold(true);
 
     QFont dayFont = painter.font();
-    dayFont.setPixelSize(12);
+    dayFont.setPixelSize(11);
 
     for (int month = 1; month <= 12; ++month) {
         const QRect area = monthRect(month - 1);
@@ -223,10 +223,13 @@ void YearView::paintEvent(QPaintEvent *event) {
                 cellW, cellH);
 
             if (date == today) {
+                const int side = qMin(cellW - 2, cellH - 1);
+                QRect highlight(0, 0, side, side);
+                highlight.moveCenter(cell.center());
                 painter.setPen(Qt::NoPen);
                 painter.setBrush(AccentColor);
-                painter.drawEllipse(cell.center().x() - cellH / 2 + 2,
-                    cell.center().y() - cellH / 2 + 2, cellH - 4, cellH - 4);
+                const int radius = qMin(6, side / 2);
+                painter.drawRoundedRect(highlight, radius, radius);
                 painter.setPen(Qt::white);
             } else {
                 const int dow = date.dayOfWeek();

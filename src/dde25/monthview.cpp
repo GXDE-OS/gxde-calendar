@@ -49,6 +49,8 @@ CMonthView::CMonthView(QWidget *parent)
             this, &CMonthView::signalCreateSchedule);
     connect(m_monthGraphicsView, &CMonthGraphicsview::signalEditSchedule,
             this, &CMonthView::signalEditSchedule);
+    connect(m_monthGraphicsView, &CMonthGraphicsview::signalDeleteSchedule,
+            this, &CMonthView::signalDeleteSchedule);
 
     // 视图自己订阅日程变化，省得 CalendarWindow/CMonthWindow 层层透传一个 setScheduleInfo。
     // 增删改都走 scheduleUpdate()，重查一遍即可。

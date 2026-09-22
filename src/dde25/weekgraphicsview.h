@@ -83,8 +83,10 @@ signals:
     void signalsPosHours(QVector<int> vPos, QVector<int> vHours, int currentTimeType);
     // 请求新建日程（右键菜单 / 双击空白处），携带点击位置对应的时间
     void signalCreateSchedule(QDateTime dateTime);
-    // 请求编辑日程（双击日程块）
+    // 请求编辑日程（双击日程块 / 右键菜单「编辑」）
     void signalEditSchedule(DSchedule::Ptr schedule);
+    // 请求删除日程（右键菜单「删除」，确认弹窗与数据层调用在 CalendarWindow 里）
+    void signalDeleteSchedule(DSchedule::Ptr schedule);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -97,8 +99,10 @@ protected:
     virtual DSchedule::Ptr scheduleAt(const QPoint &viewPos) const;
     // 视口坐标对应的时间，超出已设范围时返回无效值（右键新建日程用）
     virtual QDateTime scheduleDateTimeAt(const QPoint &viewPos) const;
-    // 右键菜单：目前只有「新建日程」，编辑/删除在后续阶段接入
-    void popupMenu(const QPoint &globalPos, const QDateTime &dateTime);
+    // 右键菜单：schedule 非空（点中日程块）给「编辑 / 删除」，对齐参考实现
+    // draginfographicsview.cpp 的右键菜单；为空（点中空白处）给「新建日程」
+    void popupMenu(const QPoint &globalPos, const QDateTime &dateTime,
+                   const DSchedule::Ptr &schedule);
 
     void createBackgroundItem();
     // 按 m_beginDate 给各列背景项设日期

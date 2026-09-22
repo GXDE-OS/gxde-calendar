@@ -22,8 +22,8 @@
  * 移植自 dde-calendar（src/calendar-client/src/widget/dayWidget/daymonthview.*）。
  * 差异：
  *   1. DIconButton/CTodayButton 换成 QToolButton/QPushButton。翻页箭头原本是 DIconButton
- *      自带的 DStyle::SP_ArrowLeft/Right，换成从 dde-calendar 那套 previous_/next_ 箭头
- *      抠出来的 DDE25::navArrowIcon()（DTK 画的是 3px 实心箭头，太粗）。
+ *      自带的 DStyle::SP_ArrowLeft/Right，换成 DDE25::navArrowIcon()
+ *      （DTK 自己画的是 3px 实心箭头，太粗；这里用 1px 描边的细折线）。
  *   2. DHorizontalLine 换成 QFrame，且恒为隐藏（下面没有宜/忌可分隔）。
  *      dtk2 里 DHorizontalLine 在 dframe.h 而不是 <DFrame> 里（那个包装头和 dframe.h
  *      共用 DFRAME_H 宏，include 等于没做），但实测它和 QFrame::HLine + Plain 画出来
@@ -39,6 +39,7 @@
 
 #include "calendardbus.h"
 #include "customframe.h"
+#include "dde25common.h"
 
 #include <QDate>
 #include <QFrame>
@@ -48,6 +49,8 @@
 #include <QVBoxLayout>
 #include <QVector>
 #include <QWidget>
+
+#include <memory>
 
 class CDayMonthWidget;
 class CWeekWidget;
@@ -127,6 +130,9 @@ private:
     const int m_radius = 8;
 
     CWeekWidget *m_weekWidget = nullptr; // 星期名显示区域
+
+    // 迷你月历上的滚轮换天节流（见 DDE25::WheelStepper）
+    std::unique_ptr<DDE25::WheelStepper> m_wheelStepper;
 };
 
 /**

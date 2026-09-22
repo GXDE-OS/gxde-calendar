@@ -84,6 +84,10 @@ CIcsSubscriptionItem::CIcsSubscriptionItem(QWidget *parent)
     m_urlLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     m_statusLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
 
+    m_editButton = new DPushButton(tr("Edit"), this);
+    m_editButton->setFixedSize(48, 28);
+    m_editButton->setFocusPolicy(Qt::NoFocus);
+
     m_refreshButton = new DPushButton(tr("Refresh"), this);
     m_refreshButton->setFixedSize(64, 28);
     m_refreshButton->setFocusPolicy(Qt::NoFocus);
@@ -92,6 +96,9 @@ CIcsSubscriptionItem::CIcsSubscriptionItem(QWidget *parent)
     m_removeButton->setFixedSize(96, 28);
     m_removeButton->setFocusPolicy(Qt::NoFocus);
 
+    connect(m_editButton, &DPushButton::clicked, this, [this] {
+        emit signalEdit(m_info.typeID);
+    });
     connect(m_refreshButton, &DPushButton::clicked, this, [this] {
         emit signalRefresh(m_info.typeID);
     });
@@ -111,6 +118,7 @@ CIcsSubscriptionItem::CIcsSubscriptionItem(QWidget *parent)
     mainLayout->setSpacing(10);
     mainLayout->addWidget(m_colorDot, 0, Qt::AlignVCenter);
     mainLayout->addLayout(textLayout, 1);
+    mainLayout->addWidget(m_editButton, 0, Qt::AlignVCenter);
     mainLayout->addWidget(m_refreshButton, 0, Qt::AlignVCenter);
     mainLayout->addWidget(m_removeButton, 0, Qt::AlignVCenter);
 
@@ -281,9 +289,11 @@ void CIcsSubscriptionDlg::initUI() {
     //就把弹窗关掉
     setOnButtonClickedClose(false);
 
+    //只定高不定宽：宽度由 DDialog 的按钮行平分，四个按钮各占四分之一（写死 140
+    //的话在 620 宽的弹窗里会缩在中间，两边各空一条——同 CScheduleCtrlDlg 的说明）
     const int count = buttonCount();
     for (int i = 0; i < count; i++) {
-        getButton(i)->setFixedSize(140, 36);
+        getButton(i)->setFixedHeight(36);
     }
 }
 
@@ -353,6 +363,8 @@ void CIcsSubscriptionDlg::rebuild() {
             item->setStatusText(m_statusOverrides.value(info.typeID),
                                 m_statusErrors.value(info.typeID, false));
         }
+        connect(item, &CIcsSubscriptionItem::signalEdit,
+                this, &CIcsSubscriptionDlg::slotEdit);
         connect(item, &CIcsSubscriptionItem::signalRefresh,
                 this, &CIcsSubscriptionDlg::slotRefreshOne);
         connect(item, &CIcsSubscriptionItem::signalRemove,
@@ -375,7 +387,7 @@ void CIcsSubscriptionDlg::slotAddSubscription() {
 
     CalendarService *service = CalendarService::instance();
     const QString typeID = service->subscribeIcs(dlg.url(), dlg.displayName(),
-                                                 dlg.refreshIntervalMin());
+                                                 dlg.refreshIntervalMin(), dlg.colorCode());
     if (typeID.isEmpty()) {
         DDialog prompt(this);
         prompt.setIcon(QIcon::fromTheme("dialog-warning"), QSize(32, 32));
@@ -386,6 +398,46 @@ void CIcsSubscriptionDlg::slotAddSubscription() {
     }
 
     //拉取是异步的，先把状态行标成「同步中」，结果回来再改（见 slotRefreshFinished）
+    m_statusOverrides.insert(typeID, tr("Syncing..."));
+    m_statusErrors.insert(typeID, false);
+    rebuild();
+}
+
+void CIcsSubscriptionDlg::slotEdit(const QString &typeID) {
+    //取当前这一项的数据来预填：列表本身就是从 getIcsSubscriptionList() 建的
+    CalendarService::IcsSubscriptionInfo info;
+    bool found = false;
+    const QVector<CalendarService::IcsSubscriptionInfo> list =
+            CalendarService::instance()->getIcsSubscriptionList();
+    for (const CalendarService::IcsSubscriptionInfo &item : list) {
+        if (item.typeID == typeID) {
+            info = item;
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        return;
+    }
+
+    CSubscribeIcsDlg dlg(this);
+    dlg.setEditData(info);
+    if (dlg.exec() != DDialog::Accepted) {
+        return;
+    }
+
+    CalendarService *service = CalendarService::instance();
+    if (!service->updateIcsSubscription(typeID, dlg.url(), dlg.displayName(),
+                                        dlg.refreshIntervalMin(), dlg.colorCode())) {
+        DDialog prompt(this);
+        prompt.setIcon(QIcon::fromTheme("dialog-warning"), QSize(32, 32));
+        prompt.setMessage(tr("Failed to update the subscription"));
+        prompt.addButton(tr("OK", "button"), true, DDialog::ButtonNormal);
+        prompt.exec();
+        return;
+    }
+
+    //改完会立刻拉一次，状态行先标「同步中」，结果由 slotRefreshFinished 收尾
     m_statusOverrides.insert(typeID, tr("Syncing..."));
     m_statusErrors.insert(typeID, false);
     rebuild();

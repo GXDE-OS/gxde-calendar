@@ -24,6 +24,7 @@
 #define SUBSCRIBEICSDLG_H
 
 #include "dde25/dcalendarddialog.h"
+#include "schedule/calendarservice.h"
 
 //DFrame / DLineEdit 不能只写前置声明：DWIDGET_USE_NAMESPACE 会把 Dtk::Widget 下的
 //同名类引进全局，跟前置声明的 ::DFrame 撞成二义（同 colorpickerwidget.h 的处理）。
@@ -33,15 +34,18 @@
 
 #include <QString>
 
+class ColorSeletorWidget;
 class QAbstractButton;
 class QComboBox;
 class QLabel;
 
 /**
- * @brief 新增一个在线日历订阅的表单：地址 + 名称 + 刷新间隔。
+ * @brief 在线日历订阅的表单：地址 + 名称 + 刷新间隔 + 颜色。
  *
- * 只负责收集输入，不碰数据层：调用方 exec() 拿到 Accepted 之后取 url()/
- * displayName()/refreshIntervalMin()，自己去调 CalendarService::subscribeIcs()。
+ * 新增和编辑共用：只负责收集输入，不碰数据层。调用方 exec() 拿到 Accepted 之后取
+ * url()/displayName()/refreshIntervalMin()/colorCode()，新增时自己去调
+ * CalendarService::subscribeIcs()，编辑时先 setEditData() 预填再调
+ * CalendarService::updateIcsSubscription()。
  */
 class CSubscribeIcsDlg : public DCalendarDDialog
 {
@@ -49,10 +53,18 @@ class CSubscribeIcsDlg : public DCalendarDDialog
 public:
     explicit CSubscribeIcsDlg(QWidget *parent = nullptr);
 
-    //下面三个在 exec() 返回 Accepted 之后取
+    /**
+     * @brief setEditData    按已有订阅预填表单，切换到「编辑」模式
+     *
+     * 改标题和按钮文字，让用户知道现在改的是哪个订阅（列表里点进来的那个）。
+     */
+    void setEditData(const CalendarService::IcsSubscriptionInfo &info);
+
+    //下面四个在 exec() 返回 Accepted 之后取
     QString url() const;
     QString displayName() const;
     int refreshIntervalMin() const;
+    QString colorCode() const;
 
 protected:
     void changeEvent(QEvent *event) override;
@@ -72,9 +84,11 @@ private:
     QLabel *m_urlLabel = nullptr;
     QLabel *m_nameLabel = nullptr;
     QLabel *m_intervalLabel = nullptr;
+    QLabel *m_colorLabel = nullptr;
     DLineEdit *m_urlEdit = nullptr;
     DLineEdit *m_nameEdit = nullptr;
     QComboBox *m_intervalCombo = nullptr;
+    ColorSeletorWidget *m_colorSelector = nullptr;
     QAbstractButton *m_okButton = nullptr;
 };
 

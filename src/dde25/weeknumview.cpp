@@ -235,7 +235,13 @@ void CWeekNumWidget::paintCell(QWidget *cell)
         return;
     }
 
-    const QRect rect(0, 0, cell->width(), cell->height());
+    // 与 dde-calendar 不同：格子的白底上下各缩 1px。
+    // 周数条外面那圈 1px 圆角描边是 CWeekWindow 的 m_todayframe（CustomFrame）画的，
+    // 而格子是它的孙控件、按创建顺序后画：铺满整格的话，白底正好盖住描边的上下两条
+    // 横线，只剩左右两个圆角，看上去就成了「周数条比外框还高」。缩掉这 1px（即
+    // CustomFrame 的 setboreder(1)）描边才是完整一圈。文字和高亮圆仍按整格居中，
+    // 与 dde-calendar 的位置一致。
+    const QRect rect(0, 1, cell->width(), cell->height() - 2);
     // 与 dde-calendar 不同：不用 QDate::weekNumber()（跨年时会把不同周判成同一周），
     // 改为比较所在周的起始日。
     const bool isSelectDay = DDE25::firstDayOfWeek(m_days[pos], m_firstDay)
@@ -360,10 +366,11 @@ void CWeekView::setTheMe(int type)
 
 void CWeekView::wheelEvent(QWheelEvent *event)
 {
-    // 左移切换上周，右移切换下周
-    if (event->angleDelta().y() > 0) {
-        emit signalBtnPrev();
-    } else {
-        emit signalBtnNext();
+    // 上滚（delta > 0）切上周，下滚切下周。
+    // 只把方向量抛出去，由 CWeekWindow 的 WheelStepper 按「格」（120）累计后翻周：
+    // 高分辨率滚轮（如 G502 X 的 hi-res 滚轮）转一格会拆成几十个事件，
+    // 在这里逐个翻的话转一格就跳几十周。
+    if (event->angleDelta().y() != 0) {
+        emit signalAngleDelta(event->angleDelta().y());
     }
 }

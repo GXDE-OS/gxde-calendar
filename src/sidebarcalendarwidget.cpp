@@ -76,6 +76,9 @@ SidebarCalendarWidget::SidebarCalendarWidget(QWidget *parent) : QWidget(parent)
         m_dayButtons.append(button);
         m_gridLayout->addWidget(button, i / 7, i % 7);
         connect(button, &QPushButton::clicked, this, [this, button] {
+            // 选中态自己更新：以前是靠 dateClicked 绕一圈回主视图、再由主视图
+            // setDate() 灌回来才亮起来的；现在这圈不走了（见 CalendarWindow 里的连接）
+            setDate(button->date());
             emit dateClicked(button->date());
         });
     }

@@ -25,7 +25,10 @@
 #include <QPushButton>
 #include <QSettings>
 
+#include <memory>
+
 #include "calendarview.h"
+#include "dde25/dde25common.h"
 #include "schedule/dschedule.h"
 
 DWIDGET_USE_NAMESPACE
@@ -59,8 +62,11 @@ public slots:
 
     // 新建日程：M/W/D 的右键、双击空白处与标题栏「新建日程」按钮都走这里
     void slotCreateSchedule(const QDateTime &dateTime);
-    // 编辑日程：双击日程块
+    // 编辑日程：双击日程块 / 日程块右键菜单「编辑」
     void slotEditSchedule(const DSchedule::Ptr &schedule);
+    // 删除日程：日程块右键菜单「删除」。确认弹窗与重复日程的三种删法都在这里
+    // （对应参考实现 CScheduleOperation::deleteSchedule）
+    void slotDeleteSchedule(const DSchedule::Ptr &schedule);
     // 订阅在线日历的管理弹窗（标题栏菜单，在「设置窗口背景」下方）
     void slotManageIcsSubscription();
 
@@ -109,13 +115,17 @@ private:
 
     QPropertyAnimation * m_scrollAnimation = nullptr;
 
+    // DDE 15 翻月的滚轮节流（见 DDE25::WheelStepper）
+    std::unique_ptr<DDE25::WheelStepper> m_wheelStepper;
+
     void initUI();
     void initAnimation();
     void initDateChangeMonitor();
     void setupMenu();
     // 把「管理在线日历」挪到 DTK 内置的「设置窗口背景」下面，见实现里的时序说明
     void repositionIcsAction();
-    void slideMonth(bool next);
+    // 翻月动画：正数为往后翻 |count| 个月，负数为往前翻
+    void slideMonth(int count);
     QPixmap getCalendarSnapshot() const;
     QPixmap joint(QPixmap & top, QPixmap & bottom) const;
     void updateTime() const;

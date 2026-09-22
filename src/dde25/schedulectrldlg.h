@@ -27,7 +27,11 @@
  * 2. DPalette::WindowText / DPalette::Window 换成 QPalette 的同名角色；
  * 3. 主题切换原来连 DGuiApplicationHelper::themeTypeChanged，这里在 changeEvent
  *    里监听调色板变化后重新 setTheMe(DDE25::themeType())；
- * 4. 对话框图标原来取 CDynamicIcon（随日期变化），这里用应用自己的图标。
+ * 4. 对话框图标原来取 CDynamicIcon（随日期变化），这里用应用自己的图标；
+ * 5. 正文原来装在一个 DFrame 里，DTK2Widget 的 DFrame 一定会画一层底色和边框
+ *    （见 .cpp 的说明），改用普通 QWidget 当容器；
+ * 6. 底部按钮不再定宽，交给 DDialog 的按钮行平分（见 .cpp 的说明），
+ *    三个工厂函数的 type 参数相应地只保留签名。
  */
 
 #ifndef CSCHEDULECTRLDLG_H
@@ -35,15 +39,11 @@
 
 #include "dcalendarddialog.h"
 
-//dtk2 的 <DFrame> 包装头和 dframe.h 共用 DFRAME_H 宏，先定义再 include，
-//dframe.h 的主体整个被跳过，include <DFrame> 等于没做（daymonthview.h 里有同样的记录），
-//这里直接 include 小写的实体头
-#include <dframe.h>
-
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QObject>
 #include <QVBoxLayout>
+#include <QWidget>
 
 DWIDGET_USE_NAMESPACE
 
@@ -52,6 +52,8 @@ class CScheduleCtrlDlg : public DCalendarDDialog
     Q_OBJECT
 public:
     explicit CScheduleCtrlDlg(QWidget *parent = nullptr);
+    //type 是参考实现里「宽按钮 / 窄按钮」的开关，调用方还在传，所以签名留着，
+    //但宽度不再由它决定（见 .cpp 里 addPushButton 的说明）
     QAbstractButton *addPushButton(QString btName, bool type = false);
     QAbstractButton *addsuggestButton(QString btName, bool type = false);
     QAbstractButton *addWaringButton(QString btName, bool type = false);
@@ -81,7 +83,7 @@ private:
     QLabel                           *m_seconLabel = nullptr;
     int                              m_id = -1;
     QVBoxLayout *m_mainBoxLayout = nullptr;
-    DFrame *gwi = nullptr;
+    QWidget *gwi = nullptr;
     QFont labelF;
     QFont labelT;
     QVector<QString> str_btName;

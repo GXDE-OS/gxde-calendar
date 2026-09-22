@@ -117,6 +117,12 @@ void CImportIcsDlg::initUI()
         m_targetCombo->addItem(type->displayName(), type->typeID());
     }
     m_targetCombo->addItem(tr("New calendar"), NewCalendarData);
+    //默认导入到本地日历，而不是列表第一项——第一项是「Work」这类参考实现自带的
+    //类型，不是用户的日历
+    const int localIndex = m_targetCombo->findData(CalendarService::instance()->getLocalTypeID());
+    if (localIndex >= 0) {
+        m_targetCombo->setCurrentIndex(localIndex);
+    }
 
     m_nameEdit = new DLineEdit;
     m_nameEdit->setPlaceholderText(tr("Optional, the file name is used when left empty"));
@@ -154,9 +160,11 @@ void CImportIcsDlg::initUI()
     //「导入」要先校验文件和日历名，不能点一下就关（参考 scheduledlg 的做法）
     setOnButtonClickedClose(false);
 
+    //只定高不定宽：宽度由 DDialog 的按钮行平分，两个按钮各占一半（同
+    //CSubscribeIcsDlg::initUI 的说明）
     const int buttonCount = this->buttonCount();
     for (int i = 0; i < buttonCount; i++) {
-        getButton(i)->setFixedSize(140, 36);
+        getButton(i)->setFixedHeight(36);
     }
     m_okButton = getButton(buttonCount - 1);
 }

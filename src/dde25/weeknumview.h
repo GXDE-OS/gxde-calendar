@@ -114,6 +114,9 @@ signals:
     void signalsSelectDate(const QDate &date);
     void signalBtnPrev();
     void signalBtnNext();
+    // 滚轮上下滚动：交给 CWeekWindow 的 WheelStepper 统一按「格」累计后翻周，
+    // 不能在这里按事件逐个翻——高分辨率滚轮一格会拆成几十个事件
+    void signalAngleDelta(int delta);
 
 protected:
     void wheelEvent(QWheelEvent *event) override;

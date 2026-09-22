@@ -32,6 +32,9 @@
 #include <QVector>
 #include <QWidget>
 
+#include <memory>
+
+#include "dde25common.h"
 #include "schedule/dschedule.h"
 
 class CScheduleBodyView;
@@ -68,12 +71,15 @@ signals:
     void signalsCurrentDateChanged(QDate date);
     // 请求新建日程（日程区右键菜单 / 双击空白处）
     void signalCreateSchedule(QDateTime dateTime);
-    // 请求编辑日程（双击日程块）
+    // 请求编辑日程（双击日程块 / 右键菜单「编辑」）
     void signalEditSchedule(DSchedule::Ptr schedule);
+    // 请求删除日程（右键菜单「删除」）
+    void signalDeleteSchedule(DSchedule::Ptr schedule);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
+    void showEvent(QShowEvent *event) override;
 
 private slots:
     void slotPrevWeek();
@@ -87,6 +93,8 @@ private:
     void updateShowDate();
     // 以 date 为选中日，刷新所有子控件
     void switchDate(const QDate &date);
+    // 按 m_currentDate 重建子控件（显示出来时补做隐藏期间攒下的刷新）
+    void refreshCurrentDate();
 
     CWeekHeadView *m_weekHeadView = nullptr;
     CScheduleBodyView *m_weekBody = nullptr;
@@ -105,6 +113,12 @@ private:
     int m_themetype = 0;
 
     QVector<QDate> m_days;
+
+    // 周数条与日程区的滚轮节流（见 DDE25::WheelStepper）
+    std::unique_ptr<DDE25::WheelStepper> m_wheelStepper;
+
+    // 隐藏期间攒下的刷新，显示出来时补做
+    bool m_dateRefreshPending = false;
 };
 
 #endif // WEEKWINDOW_H
