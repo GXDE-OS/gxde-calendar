@@ -1,3 +1,11 @@
+gxde-calendar (4.0.0) UNRELEASED; urgency=medium
+
+  * 移植深度日历6.6.0日历局布
+  * 新增本地日程系统
+  * 新增远端ICS订阅
+
+ -- CharOfString <root@charofstring.cc>  Tue, 22 Sep 2026 00:33:02 -0500
+
 gxde-calendar (3.0.1) UNRELEASED; urgency=medium
 
   * 修复 Loongnix25 下提示总线错误无法启动的问题
