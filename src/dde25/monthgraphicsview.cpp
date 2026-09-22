@@ -27,6 +27,7 @@
 #include "cmonthdayitem.h"
 #include "constants.h"
 #include "dde25common.h"
+#include "holidayapi.h"
 #include "cmonthscheduleitem.h"
 #include "cmonthschedulenumitem.h"
 #include "schedulelayout.h"
@@ -76,6 +77,9 @@ CMonthGraphicsview::CMonthGraphicsview(QWidget *parent)
         m_Scene->addItem(item);
     }
 
+    connect(HolidayAPI::instance(), &HolidayAPI::refreshDataFinished,
+            this, &CMonthGraphicsview::applyHolidayStatus);
+
     updateSize();
 }
 
@@ -118,7 +122,33 @@ void CMonthGraphicsview::setDate(const QVector<QDate> &showDate)
     updateLunar();
     updateSize();
     updateScheduleItems();
+    // 日期一换，上一轮的班/休表就对不上了（setFestival 是按 item 当时的日期贴标签的），
+    // 所以每重建一次 42 格都要重新算一遍
+    applyHolidayStatus();
     scene()->update();
+}
+
+/**
+ * @brief CMonthGraphicsview::applyHolidayStatus  给当前 42 格打班/休标签
+ */
+void CMonthGraphicsview::applyHolidayStatus() {
+    HolidayAPI *api = HolidayAPI::instance();
+
+    QMap<QDate, int> festivalInfo;
+    for (const QDate &date : m_showDates) {
+        switch (api->getDayStatus(date)) {
+        case HolidayAPI::DayStatus::holiday:
+            festivalInfo.insert(date, CMonthDayItem::H_REST);
+            break;
+        case HolidayAPI::DayStatus::work:
+            festivalInfo.insert(date, CMonthDayItem::H_WORK);
+            break;
+        default:
+            break;
+        }
+    }
+
+    setFestival(festivalInfo);
 }
 
 void CMonthGraphicsview::setScheduleInfo(const QMap<QDate, DSchedule::List> &scheduleInfo)

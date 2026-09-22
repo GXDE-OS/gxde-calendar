@@ -38,10 +38,8 @@ CalendarView::CalendarView(QWidget *parent) : QWidget(parent)
     m_DBusInter = new CalendarDBus("com.deepin.api.LunarCalendar",
                                    "/com/deepin/api/LunarCalendar",
                                    QDBusConnection::sessionBus(), this);
-    // 加载假期数据
-    if (!m_holidayAPI) {
-        m_holidayAPI = new HolidayAPI();
-    }
+    // 加载假期数据（全局共用一份，DDE25 的月视图也从这里取，见 HolidayAPI::instance()）
+    m_holidayAPI = HolidayAPI::instance();
     if (!queue)
         queue = new QQueue<int>;
     if (!lunarCache)

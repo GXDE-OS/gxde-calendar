@@ -20,6 +20,12 @@
 #include <QFile>
 #include <QJsonArray>
 
+HolidayAPI *HolidayAPI::instance() {
+    // 故意不回收：这是个 QObject，静态析构阶段再销毁它
+    static HolidayAPI *api = new HolidayAPI();
+    return api;
+}
+
 HolidayAPI::HolidayAPI()
     : m_http(new QNetworkAccessManager(this))
 {

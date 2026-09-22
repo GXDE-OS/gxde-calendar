@@ -99,6 +99,7 @@ private:
     // 右键菜单：schedule 非空（点中日程块）给「编辑 / 删除」，对齐参考实现
     // draginfographicsview.cpp 的右键菜单；为空（点中空白格）给「新建日程」
     void popupMenu(const QPoint &globalPos, const QDate &date, const DSchedule::Ptr &schedule);
+    void applyHolidayStatus();
 
     void updateSize();
     // 从 DDE25::LunarCache 读取当前 42 格对应的农历文本

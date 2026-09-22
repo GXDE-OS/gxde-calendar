@@ -39,6 +39,9 @@ public:
         normalHoliday
     };
 
+    // 全局共用一份
+    static HolidayAPI *instance();
+
     HolidayAPI();
     ~HolidayAPI();
 
