@@ -236,9 +236,10 @@ void CImportIcsDlg::slotFileChanged()
 
 void CImportIcsDlg::slotBrowse()
 {
+    const QString nameFilter = tr("ICS files") + QStringLiteral(" (*.ics)");
     const QString filePath = QFileDialog::getOpenFileName(this, tr("Select an ICS File"),
                                                           lastImportDir(),
-                                                          tr("ICS files (*.ics)"));
+                                                          nameFilter);
     if (filePath.isEmpty()) {
         return;
     }

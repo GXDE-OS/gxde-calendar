@@ -277,37 +277,41 @@
             <translation>匯入</translation>
         </message>
         <message>
-            <location filename="../src/importicsdlg.cpp" line="239" />
+            <location filename="../src/importicsdlg.cpp" line="243" />
+            <source>ICS files</source>
+            <translation>ICS 文件</translation>
+        </message>
+        <message>
+            <location filename="../src/importicsdlg.cpp" line="244" />
             <source>Select an ICS File</source>
             <translation>選擇 ICS 檔案</translation>
         </message>
         <message>
-            <location filename="../src/importicsdlg.cpp" line="241" />
             <source>ICS files (*.ics)</source>
-            <translation>ICS 文件（*.ics）</translation>
+            <translation type="vanished">ICS 文件（*.ics）</translation>
         </message>
         <message>
-            <location filename="../src/importicsdlg.cpp" line="278" />
+            <location filename="../src/importicsdlg.cpp" line="283" />
             <source>Choose an .ics file to import</source>
             <translation>選擇要匯入的 .ics 檔案</translation>
         </message>
         <message>
-            <location filename="../src/importicsdlg.cpp" line="282" />
+            <location filename="../src/importicsdlg.cpp" line="287" />
             <source>Cannot read this file</source>
             <translation>無法讀取該檔案</translation>
         </message>
         <message>
-            <location filename="../src/importicsdlg.cpp" line="284" />
+            <location filename="../src/importicsdlg.cpp" line="289" />
             <source>%1 events in this file</source>
             <translation>該檔案中有 %1 個日程</translation>
         </message>
         <message>
-            <location filename="../src/importicsdlg.cpp" line="306" />
+            <location filename="../src/importicsdlg.cpp" line="311" />
             <source>Failed to create the calendar</source>
             <translation>建立日曆失敗</translation>
         </message>
         <message>
-            <location filename="../src/importicsdlg.cpp" line="320" />
+            <location filename="../src/importicsdlg.cpp" line="325" />
             <source>Failed to import the file</source>
             <translation>匯入檔案失敗</translation>
         </message>
@@ -753,8 +757,7 @@
             <translation>一週首日</translation>
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="547" />
-            <location filename="../src/calendarwindow.cpp" line="714" />
+            <location filename="../src/calendarwindow.cpp" line="712" />
             <source>Switch to DDE 25 layout</source>
             <translation>切換到 DDE 25 版面</translation>
         </message>
@@ -764,57 +767,58 @@
             <translation>管理線上日曆</translation>
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="713" />
+            <location filename="../src/calendarwindow.cpp" line="547" />
+            <location filename="../src/calendarwindow.cpp" line="711" />
             <source>Switch to DDE 15 layout</source>
             <translation>切換到 DDE 15 版面</translation>
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="879" />
+            <location filename="../src/calendarwindow.cpp" line="877" />
             <source>You are deleting an event.</source>
             <translation>您正在刪除日程。</translation>
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="882" />
+            <location filename="../src/calendarwindow.cpp" line="880" />
             <source>Are you sure you want to delete this event?</source>
             <translation>您確定要刪除此日程嗎？</translation>
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="883" />
-            <location filename="../src/calendarwindow.cpp" line="898" />
-            <location filename="../src/calendarwindow.cpp" line="921" />
+            <location filename="../src/calendarwindow.cpp" line="881" />
+            <location filename="../src/calendarwindow.cpp" line="896" />
+            <location filename="../src/calendarwindow.cpp" line="919" />
             <source>Cancel</source>
             <comment>button</comment>
             <translation>取消</translation>
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="884" />
+            <location filename="../src/calendarwindow.cpp" line="882" />
             <source>Delete</source>
             <comment>button</comment>
             <translation>刪除</translation>
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="896" />
+            <location filename="../src/calendarwindow.cpp" line="894" />
             <source>Do you want to delete all occurrences of this event, or only the selected occurrence?</source>
             <translation>您要刪除此日程的所有重複，還是隻刪除所選重複？</translation>
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="899" />
+            <location filename="../src/calendarwindow.cpp" line="897" />
             <source>Delete All</source>
             <translation>全部刪除</translation>
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="900" />
-            <location filename="../src/calendarwindow.cpp" line="923" />
+            <location filename="../src/calendarwindow.cpp" line="898" />
+            <location filename="../src/calendarwindow.cpp" line="921" />
             <source>Delete Only This Event</source>
             <translation>僅刪除此日程</translation>
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="919" />
+            <location filename="../src/calendarwindow.cpp" line="917" />
             <source>Do you want to delete this and all future occurrences of this event, or only the selected occurrence?</source>
             <translation>您要刪除此日程的這個重複和所有將來重複，還是隻刪除所選重複？</translation>
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="922" />
+            <location filename="../src/calendarwindow.cpp" line="920" />
             <source>Delete All Future Events</source>
             <translation>刪除所有將來日程</translation>
         </message>
@@ -917,7 +921,7 @@
     <context>
         <name>TitleBarMenu</name>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="973" />
+            <location filename="../src/calendarwindow.cpp" line="971" />
             <source>Set Window Background</source>
             <translation>設定視窗背景</translation>
         </message>

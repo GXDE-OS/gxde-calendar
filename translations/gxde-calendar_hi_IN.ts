@@ -277,37 +277,37 @@
             <translation type="unfinished" />
         </message>
         <message>
-            <location filename="../src/importicsdlg.cpp" line="239" />
+            <location filename="../src/importicsdlg.cpp" line="243" />
+            <source>ICS files</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <location filename="../src/importicsdlg.cpp" line="244" />
             <source>Select an ICS File</source>
             <translation type="unfinished" />
         </message>
         <message>
-            <location filename="../src/importicsdlg.cpp" line="241" />
-            <source>ICS files (*.ics)</source>
-            <translation type="unfinished" />
-        </message>
-        <message>
-            <location filename="../src/importicsdlg.cpp" line="278" />
+            <location filename="../src/importicsdlg.cpp" line="283" />
             <source>Choose an .ics file to import</source>
             <translation type="unfinished" />
         </message>
         <message>
-            <location filename="../src/importicsdlg.cpp" line="282" />
+            <location filename="../src/importicsdlg.cpp" line="287" />
             <source>Cannot read this file</source>
             <translation type="unfinished" />
         </message>
         <message>
-            <location filename="../src/importicsdlg.cpp" line="284" />
+            <location filename="../src/importicsdlg.cpp" line="289" />
             <source>%1 events in this file</source>
             <translation type="unfinished" />
         </message>
         <message>
-            <location filename="../src/importicsdlg.cpp" line="306" />
+            <location filename="../src/importicsdlg.cpp" line="311" />
             <source>Failed to create the calendar</source>
             <translation type="unfinished" />
         </message>
         <message>
-            <location filename="../src/importicsdlg.cpp" line="320" />
+            <location filename="../src/importicsdlg.cpp" line="325" />
             <source>Failed to import the file</source>
             <translation type="unfinished" />
         </message>
@@ -753,8 +753,7 @@
             <translation>सप्ताह का पहला दिन</translation>
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="547" />
-            <location filename="../src/calendarwindow.cpp" line="714" />
+            <location filename="../src/calendarwindow.cpp" line="712" />
             <source>Switch to DDE 25 layout</source>
             <translation type="unfinished" />
         </message>
@@ -764,59 +763,60 @@
             <translation type="unfinished" />
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="713" />
+            <location filename="../src/calendarwindow.cpp" line="547" />
+            <location filename="../src/calendarwindow.cpp" line="711" />
             <source>Switch to DDE 15 layout</source>
             <translation type="unfinished" />
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="879" />
+            <location filename="../src/calendarwindow.cpp" line="877" />
             <source>You are deleting an event.</source>
             <translation>आप एक घटना डिलीट कर रहे हैं।</translation>
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="882" />
+            <location filename="../src/calendarwindow.cpp" line="880" />
             <source>Are you sure you want to delete this event?</source>
             <translation>क्या आप इस घटना को डिलीट करना चाहते हैं?</translation>
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="883" />
-            <location filename="../src/calendarwindow.cpp" line="898" />
-            <location filename="../src/calendarwindow.cpp" line="921" />
+            <location filename="../src/calendarwindow.cpp" line="881" />
+            <location filename="../src/calendarwindow.cpp" line="896" />
+            <location filename="../src/calendarwindow.cpp" line="919" />
             <source>Cancel</source>
             <comment>button</comment>
             <translation>रद्द करें</translation>
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="884" />
+            <location filename="../src/calendarwindow.cpp" line="882" />
             <source>Delete</source>
             <comment>button</comment>
             <translation type="unfinished" />
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="896" />
+            <location filename="../src/calendarwindow.cpp" line="894" />
             <source>Do you want to delete all occurrences of this event, or only the selected occurrence?</source>
             <translation>&gt;-
  क्या आप इस घटना के सभी घटनाओं को हटाना चाहते हैं, या केवल चयनित घटना को हटाना चाहते हैं?</translation>
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="899" />
+            <location filename="../src/calendarwindow.cpp" line="897" />
             <source>Delete All</source>
             <translation>सभी हटाएं</translation>
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="900" />
-            <location filename="../src/calendarwindow.cpp" line="923" />
+            <location filename="../src/calendarwindow.cpp" line="898" />
+            <location filename="../src/calendarwindow.cpp" line="921" />
             <source>Delete Only This Event</source>
             <translation>केवल इस घटना को हटाएं</translation>
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="919" />
+            <location filename="../src/calendarwindow.cpp" line="917" />
             <source>Do you want to delete this and all future occurrences of this event, or only the selected occurrence?</source>
             <translation>&gt;-
  क्या आप इस घटना और इसकी सभी भविष्य घटनाओं को हटाना चाहते हैं, या केवल चयनित घटना को हटाना चाहते हैं?</translation>
         </message>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="922" />
+            <location filename="../src/calendarwindow.cpp" line="920" />
             <source>Delete All Future Events</source>
             <translation>सभी भविष्य घटनाओं को हटाएं</translation>
         </message>
@@ -919,7 +919,7 @@
     <context>
         <name>TitleBarMenu</name>
         <message>
-            <location filename="../src/calendarwindow.cpp" line="973" />
+            <location filename="../src/calendarwindow.cpp" line="971" />
             <source>Set Window Background</source>
             <translation type="unfinished" />
         </message>
