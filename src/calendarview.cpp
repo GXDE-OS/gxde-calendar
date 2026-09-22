@@ -58,6 +58,7 @@ CalendarView::CalendarView(QWidget *parent) : QWidget(parent)
 
     //add separator line
     QLabel* separatorLine = new QLabel(this);
+    m_separatorLine = separatorLine;
     separatorLine->setFixedHeight(1);
     separatorLine->setFixedWidth(720);
     separatorLine->setStyleSheet("border: 1px solid rgba(0, 0, 0, 0.05);");
@@ -85,6 +86,7 @@ CalendarView::CalendarView(QWidget *parent) : QWidget(parent)
     }
 
     QWidget *gridWidget = new QWidget;
+    m_gridWidget = gridWidget;
     gridWidget->setLayout(gridLayout);
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
@@ -95,6 +97,7 @@ CalendarView::CalendarView(QWidget *parent) : QWidget(parent)
     mainLayout->setSpacing(0);
 
     setLayout(mainLayout);
+    updateCellSize();
 
     connect(this, &CalendarView::dateSelected, this, &CalendarView::handleCurrentDateChanged);
     connect(m_holidayAPI, &HolidayAPI::refreshDataFinished, this, [this](){
@@ -340,12 +343,41 @@ void CalendarView::getDbusData()
     }
 }
 
-void CalendarView::paintCell(QWidget *cell)
-{
-    const QRect rect((cell->width() - DDECalendar::CellHighlightWidth) /2,
-                     (cell->height() - DDECalendar::CellHighlightHeight) /2,
-                     DDECalendar::CellHighlightWidth,
-                     DDECalendar::CellHighlightHeight);
+void CalendarView::updateCellSize() {
+    const int cellWidth = qMax(1, width() / 7);
+    const int cellHeight = qMax(1, (height() - DDECalendar::HeaderItemHeight - 1) / 6);
+
+    m_cellSize = QSize(cellWidth, cellHeight);
+    for (QWidget *cell : m_cellList) {
+        cell->setFixedSize(m_cellSize);
+    }
+
+    m_weekIndicator->setCellWidth(cellWidth);
+    m_separatorLine->setFixedWidth(qRound(720.0 * cellWidth / DDECalendar::CellWidth));
+}
+
+void CalendarView::resizeEvent(QResizeEvent *event) {
+    QWidget::resizeEvent(event);
+    updateCellSize();
+}
+
+QRect CalendarView::gridRect() const {
+    if (m_gridWidget == nullptr) {
+        return QRect();
+    }
+
+    return QRect(m_gridWidget->mapTo(this, QPoint(0, 0)), m_gridWidget->size());
+}
+
+void CalendarView::paintCell(QWidget *cell) {
+    const int hlWidth = qMin(cell->width(), qRound(DDECalendar::CellHighlightWidth
+                                                    * double(cell->width()) / DDECalendar::CellWidth));
+    const int hlHeight = qMin(cell->height(), qRound(DDECalendar::CellHighlightHeight
+                                                     * double(cell->height()) / DDECalendar::CellHeight));
+    const QRect rect((cell->width() - hlWidth) / 2,
+                     (cell->height() - hlHeight) / 2,
+                     hlWidth,
+                     hlHeight);
 
     const int pos = m_cellList.indexOf(cell);
     const int type = getDateType(m_days[pos]);

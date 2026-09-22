@@ -50,12 +50,9 @@
 
 DWIDGET_USE_NAMESPACE
 
-static const int CalendarHeaderHeight = 60;
-
 static const int CalendarWidth = 760;
 static const int CalendarHeight = 500;
 
-static const int InfoViewWidth = CalendarWidth - 86;
 static const int InfoViewHeight = 90;
 
 static const int ContentLeftRightPadding = 80;
@@ -146,8 +143,7 @@ void CalendarWindow::initUI()
     m_contentBackground->setStyleSheet("QFrame#CalendarBackground { "
                              "background:#00ffffff;"
                              "}");
-    m_contentBackground->setFixedSize(CalendarWidth + ContentLeftRightPadding * 2,
-                                      InfoViewHeight + CalendarHeight);
+    m_contentBackground->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     m_icon = new QLabel(this);
     m_icon->setFixedSize(24, 24);
@@ -159,14 +155,15 @@ void CalendarWindow::initUI()
 
     m_infoView = new InfoView;
     m_infoView->setStyleSheet("QFrame { background: rgba(0, 0, 0, 0) }");
-    m_infoView->setFixedSize(InfoViewWidth, InfoViewHeight);
+    m_infoView->setFixedHeight(InfoViewHeight);
+    m_infoView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_infoView->setYearRange(MinYearValue, INT_MAX);
 
     m_infoView->setYear(QDate::currentDate().year());
     m_infoView->setMonth(QDate::currentDate().month());
 
     m_calendarView = new CalendarView;
-    m_calendarView->setFixedSize(CalendarWidth, CalendarHeight);
+    m_calendarView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     m_calendarView->setFirstWeekday(weekday);
     m_calendarView->setCurrentDate(QDate::currentDate());
 
@@ -184,20 +181,15 @@ void CalendarWindow::initUI()
 
     m_animationContainer = new QFrame(m_contentBackground);
     m_animationContainer->setStyleSheet("QFrame { background: rgba(0, 0, 0, 0) }");
-    m_animationContainer->setFixedSize(m_calendarView->width(),
-                                       m_calendarView->height() - CalendarHeaderHeight);
-    m_animationContainer->move(ContentLeftRightPadding, CalendarHeaderHeight + InfoViewHeight);
     m_animationContainer->hide();
 
     m_fakeContent = new QLabel(m_animationContainer);
     m_fakeContent->setStyleSheet("QLabel { background: rgba(0, 0, 0, 0) }");
-    m_fakeContent->setFixedSize(m_animationContainer->width(),
-                                m_animationContainer->height() * 2);
 
     m_dde15Layout = new QVBoxLayout;
-    m_dde15Layout->setContentsMargins(0, 0, 0, 0);
+    m_dde15Layout->setContentsMargins(ContentLeftRightPadding, 0, ContentLeftRightPadding, 0);
     m_dde15Layout->setSpacing(0);
-    m_dde15Layout->addWidget(m_infoView, 0, Qt::AlignHCenter);
+    m_dde15Layout->addWidget(m_infoView);
     // Month view m_calendarView is imported dynamically by applyLayout()
     m_contentBackground->setLayout(m_dde15Layout);
 
@@ -654,27 +646,18 @@ void CalendarWindow::applyLayout() {
     const int titlebarHeight = titlebar ? titlebar->height() : 0;
 
     if (titlebar) {
-        // DDE 25 允许最大化；DDE 15 是固定尺寸的，最大化按钮没有意义
         Qt::WindowFlags flags = titlebar->windowFlags();
-        if (dde25) {
-            flags |= Qt::WindowMaximizeButtonHint;
-        } else {
-            flags &= ~Qt::WindowMaximizeButtonHint;
-        }
+        flags |= Qt::WindowMaximizeButtonHint;
         titlebar->setWindowFlags(flags);
     }
 
+    setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
     if (dde25) {
-        setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
         setMinimumSize(SidebarWidth + CalendarWidth + Dde25SidePadding * 2,
             CalendarHeight + titlebarHeight);
     } else {
-        if (isMaximized()) {
-            showNormal();
-        }
-        const int width = CalendarWidth + ContentLeftRightPadding * 2;
-        const int contentHeight = InfoViewHeight + CalendarHeight;
-        setFixedSize(width, contentHeight + titlebarHeight);
+        setMinimumSize(CalendarWidth + ContentLeftRightPadding * 2,
+            InfoViewHeight + CalendarHeight + titlebarHeight);
     }
 
     updateLayoutActionText(dde25);
@@ -699,7 +682,7 @@ void CalendarWindow::relayoutCalendarView(bool dde25) {
     } else {
         if (m_dde15Layout->indexOf(m_calendarView) < 0) {
             m_viewStack->removeWidget(m_calendarView);
-            m_dde15Layout->addWidget(m_calendarView, 0, Qt::AlignHCenter);
+            m_dde15Layout->addWidget(m_calendarView, 1);
         }
         m_calendarView->show();
     }
@@ -746,6 +729,7 @@ void CalendarWindow::slideMonth(int count)
         return;
     }
 
+    syncAnimationGeometry();
     m_animationContainer->show();
     m_animationContainer->raise();
 
@@ -770,9 +754,24 @@ void CalendarWindow::slideMonth(int count)
     m_scrollAnimation->start();
 }
 
+void CalendarWindow::syncAnimationGeometry() {
+    if (m_calendarView->parentWidget() != m_contentBackground) {
+        return;
+    }
+
+    const QRect grid = m_calendarView->gridRect();
+    if (grid.isEmpty()) {
+        return;
+    }
+
+    m_animationContainer->setGeometry(QRect(m_calendarView->mapTo(m_contentBackground, grid.topLeft()),
+                                            grid.size()));
+    m_fakeContent->setFixedSize(grid.width(), grid.height() * 2);
+}
+
 QPixmap CalendarWindow::getCalendarSnapshot() const
 {
-    return m_calendarView->grab(m_calendarView->rect().adjusted(0, CalendarHeaderHeight, 0, 0));
+    return m_calendarView->grab(m_calendarView->gridRect());
 }
 
 QPixmap CalendarWindow::joint(QPixmap &top, QPixmap &bottom) const
@@ -955,6 +954,11 @@ void CalendarWindow::showEvent(QShowEvent *event)
     if (m_icsAction != nullptr && !m_icsActionRepositioned) {
         QTimer::singleShot(0, this, [this] { repositionIcsAction(); });
     }
+}
+
+void CalendarWindow::resizeEvent(QResizeEvent *event) {
+    DMainWindow::resizeEvent(event);
+    syncAnimationGeometry();
 }
 
 void CalendarWindow::repositionIcsAction() {

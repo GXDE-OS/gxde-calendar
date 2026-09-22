@@ -55,8 +55,21 @@ void WeekIndicator::setList(int weekday)
         }
 
         label->setAlignment(Qt::AlignCenter);
-        label->setFixedSize(DDECalendar::CellWidth, DDECalendar::HeaderItemHeight);
+        label->setFixedSize(m_cellWidth, DDECalendar::HeaderItemHeight);
         m_mainLayout->addWidget(label, 0, Qt::AlignCenter);
+    }
+}
+
+void WeekIndicator::setCellWidth(int width) {
+    if (m_cellWidth == width) {
+        return;
+    }
+
+    m_cellWidth = width;
+    for (int i = 0; i < m_mainLayout->count(); ++i) {
+        if (QWidget *label = m_mainLayout->itemAt(i)->widget()) {
+            label->setFixedSize(m_cellWidth, DDECalendar::HeaderItemHeight);
+        }
     }
 }
 

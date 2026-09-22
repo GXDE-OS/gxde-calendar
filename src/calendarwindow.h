@@ -72,6 +72,7 @@ public slots:
 
 protected:
     void showEvent(QShowEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
     void wheelEvent(QWheelEvent *);
 
 protected slots:
@@ -127,6 +128,7 @@ private:
     void repositionIcsAction();
     // 翻月动画：正数为往后翻 |count| 个月，负数为往前翻
     void slideMonth(int count);
+    void syncAnimationGeometry();
     QPixmap getCalendarSnapshot() const;
     QPixmap joint(QPixmap & top, QPixmap & bottom) const;
     void updateTime() const;

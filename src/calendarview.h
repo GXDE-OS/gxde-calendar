@@ -31,6 +31,7 @@
 
 class CalendarDBus;
 class CaLunarDayInfo;
+class QLabel;
 
 enum CalendarDayType
 {
@@ -70,6 +71,7 @@ public:
     inline QDate currentDate() const {
         return m_currentDate;
     }
+    QRect gridRect() const;
 
 signals:
     void dateSelected(const QDate date, const CaLunarDayInfo &detail) const;
@@ -95,6 +97,8 @@ private:
     bool eventFilter(QObject *o, QEvent *e);
     void updateDate();
     void updateCurrentLunar(const CaLunarDayInfo &info);
+    void updateCellSize();
+    void resizeEvent(QResizeEvent *event) override;
 
 private slots:
     void cellClicked(QWidget *cell);
@@ -140,6 +144,9 @@ private:
     static CaLunarDayInfo *emptyCaLunarDayInfo;
 
     WeekIndicator *m_weekIndicator;
+    QLabel *m_separatorLine = nullptr;
+    QWidget *m_gridWidget = nullptr;
+    QSize m_cellSize = QSize(DDECalendar::CellWidth, DDECalendar::CellHeight);
     int m_firstWeekDay;
     HolidayAPI *m_holidayAPI = nullptr;
 };

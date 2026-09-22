@@ -30,12 +30,14 @@ class WeekIndicator : public QWidget
 public:
     explicit WeekIndicator(QWidget *parent = 0);
     void setList(int weekday);
+    void setCellWidth(int width);
 
 private:
     int checkDay(int weekday);
 
 private:
     QHBoxLayout *m_mainLayout;
+    int m_cellWidth = DDECalendar::CellWidth;
 };
 
 #endif // WEEKINDICATOR_H
