@@ -1,10 +1,14 @@
-gxde-calendar (4.0.0) UNRELEASED; urgency=medium
+gxde-calendar (6.0.1) UNRELEASED; urgency=medium
 
+  [ CharOfString ]
   * 移植深度日历6.6.0日历局布
   * 新增本地日程系统
   * 新增远端ICS订阅
 
- -- CharOfString <root@charofstring.cc>  Tue, 22 Sep 2026 00:33:02 -0500
+  [ gfdgd_xi ]
+  * 补充编译依赖编译libical-dev
+
+ -- gfdgd_xi <3025613752@qq.com>  Tue, 22 Sep 2026 23:04:03 +0800
 
 gxde-calendar (3.0.1) UNRELEASED; urgency=medium
 
