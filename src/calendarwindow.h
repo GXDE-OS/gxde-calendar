@@ -107,6 +107,7 @@ private:
     QPushButton *m_newScheduleButton = nullptr;
     QPushButton *m_sidebarToggleButton = nullptr;
     bool m_sidebarCollapsed = false;
+    bool m_dde25Layout = true;
     QVBoxLayout *m_dde15Layout = nullptr;
 
     QFrame * m_animationContainer = nullptr;

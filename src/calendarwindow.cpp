@@ -544,7 +544,7 @@ void CalendarWindow::setupMenu()
         m_sunAction = firstWeekday->addAction(locale.dayName(7, QLocale::ShortFormat));
 
         titlebar->menu()->addSeparator();
-        m_layoutAction = titlebar->menu()->addAction(tr("Switch to DDE 25 layout"));
+        m_layoutAction = titlebar->menu()->addAction(tr("Switch to DDE 15 layout"));
         m_icsAction = titlebar->menu()->addAction(tr("Manage Online Calendars"));
 
         // 标题栏自定义区域：左侧只有侧边栏折叠按钮，Y/M/W/D 紧随其后
@@ -571,9 +571,7 @@ void CalendarWindow::setupMenu()
 void CalendarWindow::menuItemInvoked(QAction *action)
 {
     if (action == m_layoutAction) {
-        const bool dde25 = m_settings->value("layout", QStringLiteral("dde25")).toString() != QStringLiteral("dde15");
-        const bool newDde25 = !dde25;
-        m_settings->setValue("layout", newDde25 ? QStringLiteral("dde25") : QStringLiteral("dde15"));
+        m_dde25Layout = !m_dde25Layout;
         applyLayout();
         return;
     }
@@ -640,7 +638,7 @@ void CalendarWindow::setSidebarCollapsed(bool collapsed) {
 }
 
 void CalendarWindow::applyLayout() {
-    const bool dde25 = m_settings->value("layout", QStringLiteral("dde25")).toString() != QStringLiteral("dde15");
+    const bool dde25 = m_dde25Layout;
 
     relayoutCalendarView(dde25);
     m_mainStack->setCurrentIndex(dde25 ? 1 : 0);
