@@ -48,6 +48,12 @@ public:
      */
     void setStatusText(const QString &text, bool error = false);
 
+    /**
+     * @brief setBottomLineVisible  行之间那条细灰线画不画。列表最后一行要传 false，
+     *                              免得列表底下多出一条悬空的线
+     */
+    void setBottomLineVisible(bool visible);
+
 signals:
     void signalEdit(const QString &typeID);
     void signalRefresh(const QString &typeID);
@@ -61,6 +67,7 @@ private:
     QString syncStateText() const;
     QString currentStatusText() const;
     void applyTheme();
+    void applyFrameStyle();
     void updateStatus();
     void updateElidedTexts();
 
@@ -68,6 +75,7 @@ private:
     QString m_statusText;
     bool m_statusIsError = false;
     int m_appliedThemeType = -1;
+    bool m_bottomLineVisible = true;
 
     QLabel *m_colorDot = nullptr;
     QLabel *m_nameLabel = nullptr;

@@ -211,11 +211,7 @@ void CIcsSubscriptionItem::applyTheme() {
     }
     m_appliedThemeType = themeType;
 
-    //行本身给一层很淡的底色，跟对话框背景区分开
-    const QColor background = (themeType == 2) ? QColor(255, 255, 255, 16)
-                                               : QColor(0, 0, 0, 10);
-    setStyleSheet(QStringLiteral("CIcsSubscriptionItem { background-color: %1; border-radius: 6px; }")
-                          .arg(background.name(QColor::HexArgb)));
+    applyFrameStyle();
 
     const QString nameStyle = QStringLiteral("QLabel { color: %1; }")
                                       .arg(dialogTextColor(themeType, 0.9).name(QColor::HexArgb));
@@ -225,6 +221,24 @@ void CIcsSubscriptionItem::applyTheme() {
     //状态行可能是警示色，颜色在 updateStatus() 里单独设
     m_urlLabel->setStyleSheet(urlStyle);
     updateStatus();
+}
+
+void CIcsSubscriptionItem::setBottomLineVisible(bool visible) {
+    if (m_bottomLineVisible == visible) {
+        return;
+    }
+
+    m_bottomLineVisible = visible;
+    applyFrameStyle();
+}
+
+void CIcsSubscriptionItem::applyFrameStyle() {
+    const QColor line = dialogTextColor(DDE25::themeType(), 0.08);
+    setStyleSheet(QStringLiteral("CIcsSubscriptionItem { background: transparent; %1 }")
+                          .arg(m_bottomLineVisible
+                                   ? QStringLiteral("border-bottom: 1px solid %1;")
+                                         .arg(line.name(QColor::HexArgb))
+                                   : QString()));
 }
 
 void CIcsSubscriptionItem::changeEvent(QEvent *event) {
@@ -256,10 +270,9 @@ void CIcsSubscriptionDlg::initUI() {
     m_emptyLabel->setAlignment(Qt::AlignCenter);
 
     m_itemContainer = new QWidget;
-    m_itemContainer->setAutoFillBackground(false);
     m_itemLayout = new QVBoxLayout(m_itemContainer);
     m_itemLayout->setContentsMargins(0, 0, 0, 0);
-    m_itemLayout->setSpacing(6);
+    m_itemLayout->setSpacing(0);
     m_itemLayout->addWidget(m_emptyLabel, 0, Qt::AlignHCenter);
     m_itemLayout->addStretch();
 
@@ -271,6 +284,7 @@ void CIcsSubscriptionDlg::initUI() {
     m_scrollArea->setStyleSheet("QScrollArea { background: transparent; border: none; }");
     m_scrollArea->viewport()->setAutoFillBackground(false);
     m_scrollArea->setWidget(m_itemContainer);
+    m_itemContainer->setAutoFillBackground(false);
 
     QWidget *content = new QWidget(this);
     content->setFixedSize(ContentWidth, ContentHeight);
@@ -372,6 +386,10 @@ void CIcsSubscriptionDlg::rebuild() {
         m_itemLayout->insertWidget(insertAt + offset, item);
         m_items.append(item);
         ++offset;
+    }
+
+    if (!m_items.isEmpty()) {
+        m_items.last()->setBottomLineVisible(false);
     }
 }
 
