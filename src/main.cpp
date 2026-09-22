@@ -50,9 +50,18 @@ QRect PrimaryRect() {
     return screen->geometry();
 }
 
-int main(int argc, char *argv[])
-{
-    DApplication::loadDXcbPlugin();
+int main(int argc, char *argv[]) {
+    // Enforcing Wayland platform under Wayland sessions.
+    const QByteArray qpaPlatform = qgetenv("QT_QPA_PLATFORM");
+    if (qpaPlatform.isEmpty() || qpaPlatform.contains("dxcb")) {
+        if (!qgetenv("WAYLAND_DISPLAY").isEmpty()
+            || qgetenv("XDG_SESSION_TYPE") == "wayland") {
+            qputenv("QT_QPA_PLATFORM", "wayland");
+        } else {
+            DApplication::loadDXcbPlugin();
+        }
+    }
+
     DApplication a(argc, argv);
     // 启用高DPI支持
     a.setAttribute(Qt::AA_UseHighDpiPixmaps);
