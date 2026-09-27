@@ -45,24 +45,28 @@ const int ListLeftRightMargin = 10;
 // 左侧类型色条的宽度与上下缩进（月视图的日程块也是 4px 竖条）
 const int ColorBarWidth = 4;
 
-// 新建日程按钮的样式，与标题栏的 NewScheduleButton 保持一致
-QString addButtonStyleSheet()
+// 新建日程按钮的样式，与标题栏的 NewScheduleButton 保持一致（dark 时用深色半透明底）
+QString addButtonStyleSheet(bool dark)
 {
-    return QStringLiteral(
-        "QPushButton {"
-        "  background-color: white;"
-        "  border: 1px solid rgba(0, 0, 0, 0.1);"
-        "  border-radius: 4px;"
-        "}"
-        "QPushButton:hover {"
-        "  background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
-        "    stop:0 #8CCFFF, stop:1 #4BB8FF);"
-        "  border: 1px solid #3caafd;"
-        "}"
-        "QPushButton:pressed {"
-        "  background-color: #2ca7f8;"
-        "  border: 1px solid #1088ff;"
-        "}");
+    const QString bg = dark ? QStringLiteral("rgba(255, 255, 255, 0.08)")
+                           : QStringLiteral("white");
+    const QString border = dark ? QStringLiteral("rgba(255, 255, 255, 0.12)")
+                               : QStringLiteral("rgba(0, 0, 0, 0.1)");
+    return QString("QPushButton {"
+                   "  background-color: %1;"
+                   "  border: 1px solid %2;"
+                   "  border-radius: 4px;"
+                   "}"
+                   "QPushButton:hover {"
+                   "  background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
+                   "    stop:0 #8CCFFF, stop:1 #4BB8FF);"
+                   "  border: 1px solid #3caafd;"
+                   "}"
+                   "QPushButton:pressed {"
+                   "  background-color: #2ca7f8;"
+                   "  border: 1px solid #1088ff;"
+                   "}")
+        .arg(bg, border);
 }
 
 } // namespace
@@ -191,18 +195,13 @@ SidebarScheduleList::SidebarScheduleList(QWidget *parent)
     QFont font = m_dateLabel->font();
     font.setPixelSize(12);
     m_dateLabel->setFont(font);
-    m_dateLabel->setStyleSheet("QLabel { color: rgba(0, 0, 0, 0.8); }");
 
     m_addButton = new QPushButton(this);
-    m_addButton->setIcon(QIcon(DDE25::themeType() == 2
-                                   ? ":/resources/icon/dde_calendar_create_dark.svg"
-                                   : ":/resources/icon/dde_calendar_create_light.svg"));
     m_addButton->setIconSize(QSize(16, 16));
     m_addButton->setFixedSize(24, 24);
     m_addButton->setToolTip(tr("New Schedule"));
     m_addButton->setFocusPolicy(Qt::NoFocus);
     m_addButton->setCursor(Qt::PointingHandCursor);
-    m_addButton->setStyleSheet(addButtonStyleSheet());
     connect(m_addButton, &QPushButton::clicked, this, [this] {
         if (m_date.isValid()) {
             emit signalCreateSchedule(m_date);
@@ -218,7 +217,6 @@ SidebarScheduleList::SidebarScheduleList(QWidget *parent)
 
     m_emptyLabel = new QLabel(tr("No Schedule"));
     m_emptyLabel->setAlignment(Qt::AlignCenter);
-    m_emptyLabel->setStyleSheet("QLabel { color: rgba(0, 0, 0, 0.4); }");
 
     m_itemContainer = new QWidget;
     m_itemContainer->setAutoFillBackground(false);
@@ -244,6 +242,42 @@ SidebarScheduleList::SidebarScheduleList(QWidget *parent)
     mainLayout->addSpacing(6);
     mainLayout->addLayout(headerLayout);
     mainLayout->addWidget(m_scrollArea, 1);
+
+    // 日期标签、空状态标签、新建按钮随深浅主题初始化（运行时切换在 changeEvent 里再调）
+    applyTheme();
+}
+
+void SidebarScheduleList::changeEvent(QEvent *event)
+{
+    // 跟随系统调色板（深浅主题）变化，刷新配色；做法同各对话框 setTheMe，
+    // 监听 PaletteChange / ApplicationPaletteChange。日程行 SidebarScheduleItem
+    // 的 paintEvent 本身读 DDE25::themeType()，这里不处理。
+    if (event->type() == QEvent::PaletteChange
+            || event->type() == QEvent::ApplicationPaletteChange) {
+        applyTheme();
+    }
+    QWidget::changeEvent(event);
+}
+
+void SidebarScheduleList::applyTheme()
+{
+    const bool dark = DDE25::themeType() == 2;
+
+    m_dateLabel->setStyleSheet(
+        dark ? "QLabel { color: rgba(255, 255, 255, 0.9); }"
+             : "QLabel { color: rgba(0, 0, 0, 0.8); }");
+    m_emptyLabel->setStyleSheet(
+        dark ? "QLabel { color: rgba(255, 255, 255, 0.4); }"
+             : "QLabel { color: rgba(0, 0, 0, 0.4); }");
+    m_addButton->setIcon(QIcon(dark
+        ? ":/resources/icon/dde_calendar_create_dark.svg"
+        : ":/resources/icon/dde_calendar_create_light.svg"));
+    m_addButton->setStyleSheet(addButtonStyleSheet(dark));
+
+    // 已绘制的日程行按当前主题重绘
+    for (SidebarScheduleItem *item : m_items) {
+        item->update();
+    }
 }
 
 void SidebarScheduleList::setDate(const QDate &date)

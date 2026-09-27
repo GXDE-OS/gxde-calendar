@@ -173,11 +173,6 @@ void CalendarWindow::initUI()
     m_sidebarCalendar->setDate(QDate::currentDate());
     m_sidebarCalendar->setObjectName("SidebarCalendarWidget");
     m_sidebarCalendar->setAttribute(Qt::WA_StyledBackground, true);
-    m_sidebarCalendar->setStyleSheet(
-        "QWidget#SidebarCalendarWidget {"
-        "  background-color: #67f9f9fa;"
-        "  border: none;"
-        "}");
 
     m_animationContainer = new QFrame(m_contentBackground);
     m_animationContainer->setStyleSheet("QFrame { background: rgba(0, 0, 0, 0) }");
@@ -203,31 +198,10 @@ void CalendarWindow::initUI()
     // （白底 + 1px rgba 边框 + 4px 圆角 + 蓝色渐变 hover）
     m_sidebarToggleButton = new QPushButton;
     m_sidebarToggleButton->setObjectName("SidebarToggleButton");
-    // 图标用 QIcon::Normal/Active 双态：常态深色、hover 时自动切白色，
-    // 尺寸由 setIconSize 精确控制为 16x16（高 DPI 下由 SVG 引擎清晰渲染）。
-    QIcon sidebarIcon;
-    sidebarIcon.addFile(":/resources/icon/sidebar.svg", QSize(16, 16), QIcon::Normal);
-    sidebarIcon.addFile(":/resources/icon/sidebar_dark.svg", QSize(16, 16), QIcon::Active);
-    m_sidebarToggleButton->setIcon(sidebarIcon);
     m_sidebarToggleButton->setIconSize(QSize(16, 16));
     m_sidebarToggleButton->setFixedSize(24, 24);
     m_sidebarToggleButton->setFocusPolicy(Qt::NoFocus);
     m_sidebarToggleButton->setCursor(Qt::PointingHandCursor);
-    m_sidebarToggleButton->setStyleSheet(
-        "QPushButton#SidebarToggleButton {"
-        "  background-color: white;"
-        "  border: 1px solid rgba(0, 0, 0, 0.1);"
-        "  border-radius: 4px;"
-        "}"
-        "QPushButton#SidebarToggleButton:hover {"
-        "  background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
-        "    stop:0 #8CCFFF, stop:1 #4BB8FF);"
-        "  border: 1px solid #3caafd;"
-        "}"
-        "QPushButton#SidebarToggleButton:pressed {"
-        "  background-color: #2ca7f8;"
-        "  border: 1px solid #1088ff;"
-        "}");
     connect(m_sidebarToggleButton, &QPushButton::clicked, this, [this](bool) {
         setSidebarCollapsed(!m_sidebarCollapsed);
     });
@@ -236,36 +210,20 @@ void CalendarWindow::initUI()
     // 新建日程按钮，与侧边栏折叠按钮同一套样式，放在 Y/M/W/D 后面
     m_newScheduleButton = new QPushButton;
     m_newScheduleButton->setObjectName("NewScheduleButton");
-    // 图标取自 dde-calendar 的 dde_calendar_create 内置图标（本机没有图标主题，
-    // 已内置进 qrc）；深浅主题各一份，选法同 cpushbutton.cpp
-    m_newScheduleButton->setIcon(QIcon(DDE25::themeType() == 2
-                                           ? ":/resources/icon/dde_calendar_create_dark.svg"
-                                           : ":/resources/icon/dde_calendar_create_light.svg"));
     m_newScheduleButton->setIconSize(QSize(16, 16));
     m_newScheduleButton->setFixedSize(24, 24);
     m_newScheduleButton->setToolTip(tr("New Schedule"));
     m_newScheduleButton->setFocusPolicy(Qt::NoFocus);
     m_newScheduleButton->setCursor(Qt::PointingHandCursor);
-    m_newScheduleButton->setStyleSheet(
-        "QPushButton#NewScheduleButton {"
-        "  background-color: white;"
-        "  border: 1px solid rgba(0, 0, 0, 0.1);"
-        "  border-radius: 4px;"
-        "}"
-        "QPushButton#NewScheduleButton:hover {"
-        "  background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
-        "    stop:0 #8CCFFF, stop:1 #4BB8FF);"
-        "  border: 1px solid #3caafd;"
-        "}"
-        "QPushButton#NewScheduleButton:pressed {"
-        "  background-color: #2ca7f8;"
-        "  border: 1px solid #1088ff;"
-        "}");
     // 没有点具体位置时，就以当前选中日期 + 当前时刻（弹窗里会向上取整到
     // 15 分钟）作为新建日程的默认时间
     connect(m_newScheduleButton, &QPushButton::clicked, this, [this](bool) {
         slotCreateSchedule(QDateTime(m_calendarView->currentDate(), QTime::currentTime()));
     });
+
+    // 标题栏按钮与侧栏样式随深浅主题初始化（运行时切换在 changeEvent 里再调一次）
+    applyTitleBarButtonTheme();
+    applySidebarTheme();
 
     m_viewStack = new QStackedWidget;
 
@@ -335,11 +293,6 @@ void CalendarWindow::initUI()
     m_sidebarContainer = new QWidget(m_dde25Page);
     m_sidebarContainer->setObjectName("SidebarContainer");
     m_sidebarContainer->setAttribute(Qt::WA_StyledBackground, true);
-    m_sidebarContainer->setStyleSheet(
-        "QWidget#SidebarContainer {"
-        "  background-color: #67f9f9fa;"
-        "  border: none;"
-        "}");
     m_sidebarContainer->setFixedWidth(SidebarWidth);
 
     QVBoxLayout *sidebarLayout = new QVBoxLayout(m_sidebarContainer);
@@ -959,6 +912,77 @@ void CalendarWindow::showEvent(QShowEvent *event)
 void CalendarWindow::resizeEvent(QResizeEvent *event) {
     DMainWindow::resizeEvent(event);
     syncAnimationGeometry();
+}
+
+void CalendarWindow::changeEvent(QEvent *event)
+{
+    // 跟随系统调色板（深浅主题）变化，刷新标题栏按钮与侧栏：参考各对话框的 setTheMe
+    // 做法，这里监听 PaletteChange / ApplicationPaletteChange 后重新取主题类型。
+    if (event->type() == QEvent::PaletteChange
+            || event->type() == QEvent::ApplicationPaletteChange) {
+        applyTitleBarButtonTheme();
+        applySidebarTheme();
+    }
+    DMainWindow::changeEvent(event);
+}
+
+void CalendarWindow::applyTitleBarButtonTheme()
+{
+    const bool dark = DDE25::themeType() == 2;
+
+    // 浅色主题：白底 + 1px 半透明黑边框；深色主题：深色半透明底 + 浅色边框，
+    // 与 gxde-file-manager 标题栏按钮在深浅主题下保持一致观感。
+    const QString bg = dark ? QStringLiteral("rgba(255, 255, 255, 0.08)")
+                            : QStringLiteral("white");
+    const QString border = dark ? QStringLiteral("rgba(255, 255, 255, 0.12)")
+                                : QStringLiteral("rgba(0, 0, 0, 0.1)");
+
+    auto styleFor = [&](const QString &name) {
+        return QString("QPushButton#%1 {"
+                       "  background-color: %2;"
+                       "  border: 1px solid %3;"
+                       "  border-radius: 4px;"
+                       "}"
+                       "QPushButton#%1:hover {"
+                       "  background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
+                       "    stop:0 #8CCFFF, stop:1 #4BB8FF);"
+                       "  border: 1px solid #3caafd;"
+                       "}"
+                       "QPushButton#%1:pressed {"
+                       "  background-color: #2ca7f8;"
+                       "  border: 1px solid #1088ff;"
+                       "}")
+                .arg(name, bg, border);
+    };
+
+    m_sidebarToggleButton->setStyleSheet(styleFor("SidebarToggleButton"));
+    m_newScheduleButton->setStyleSheet(styleFor("NewScheduleButton"));
+
+    // 新建日程图标：深浅主题各一份（选法同 cpushbutton.cpp）。
+    m_newScheduleButton->setIcon(QIcon(dark
+        ? ":/resources/icon/dde_calendar_create_dark.svg"
+        : ":/resources/icon/dde_calendar_create_light.svg"));
+
+    // 侧边栏折叠按钮：常态浅色主题用黑描边、深色主题用白描边图标；
+    // hover（Active）一律白色，叠在蓝色渐变上更清晰。
+    QIcon sidebarIcon;
+    sidebarIcon.addFile(dark ? ":/resources/icon/sidebar_dark.svg"
+                             : ":/resources/icon/sidebar.svg",
+                        QSize(16, 16), QIcon::Normal);
+    sidebarIcon.addFile(":/resources/icon/sidebar_dark.svg", QSize(16, 16), QIcon::Active);
+    m_sidebarToggleButton->setIcon(sidebarIcon);
+}
+
+void CalendarWindow::applySidebarTheme()
+{
+    if (m_sidebarContainer == nullptr) {
+        return;
+    }
+    const bool dark = DDE25::themeType() == 2;
+    // 侧栏容器背景：浅色近白、深色深色半透明，与侧栏内小日历保持一致观感
+    m_sidebarContainer->setStyleSheet(
+        dark ? "QWidget#SidebarContainer { background-color: rgba(255, 255, 255, 0.04); border: none; }"
+             : "QWidget#SidebarContainer { background-color: #67f9f9fa; border: none; }");
 }
 
 void CalendarWindow::repositionIcsAction() {

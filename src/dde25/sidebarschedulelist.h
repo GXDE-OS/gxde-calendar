@@ -91,8 +91,11 @@ signals:
 
 protected:
     void showEvent(QShowEvent *event) override;
+    void changeEvent(QEvent *event) override;
 
 private:
+    // 按系统深浅主题刷新日期标签、空状态标签与新建按钮配色
+    void applyTheme();
     void rebuild();
     void updateHeader();
 

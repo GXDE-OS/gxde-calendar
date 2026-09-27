@@ -20,6 +20,8 @@
 
 #include <QWidget>
 
+#include "dde25/dde25common.h"
+
 class QButtonGroup;
 class QPushButton;
 
@@ -35,9 +37,18 @@ public:
 signals:
     void currentChanged(int index);
 
+protected:
+    void changeEvent(QEvent *event) override;
+
 private:
+    // 按系统深浅主题刷新容器背景、边框与各分段按钮的文字/悬停/选中色
+    void applyTheme();
+
     QButtonGroup *m_group = nullptr;
     QList<QPushButton *> m_buttons;
+    // setStyleSheet() 会触发 Qt 内部重设调色板并再次分发 PaletteChange，
+    // 若不加保护会在 changeEvent -> applyTheme -> setStyleSheet 间无限递归。
+    bool m_applyingTheme = false;
 };
 
 #endif  // SRC_VIEWSWITCHER_H_

@@ -74,6 +74,7 @@ protected:
     void showEvent(QShowEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
     void wheelEvent(QWheelEvent *);
+    void changeEvent(QEvent *event) override;
 
 protected slots:
     void menuItemInvoked(QAction *action);
@@ -128,6 +129,10 @@ private:
     void repositionIcsAction();
     // 翻月动画：正数为往后翻 |count| 个月，负数为往前翻
     void slideMonth(int count);
+    // 标题栏按钮（侧边栏折叠 / 新建日程）随深浅主题切换背景、边框与图标
+    void applyTitleBarButtonTheme();
+    // 侧栏容器背景随深浅主题切换
+    void applySidebarTheme();
     void syncAnimationGeometry();
     QPixmap getCalendarSnapshot() const;
     QPixmap joint(QPixmap & top, QPixmap & bottom) const;

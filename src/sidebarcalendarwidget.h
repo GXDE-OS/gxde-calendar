@@ -56,11 +56,16 @@ signals:
     // 通过上/下月按钮切换了显示月份
     void monthChanged(int year, int month);
 
+protected:
+    void changeEvent(QEvent *event) override;
+
 private slots:
     void slotNextMonth();
     void slotPreviousMonth();
 
 private:
+    // 按系统深浅主题刷新自身背景、标题与周几表头配色
+    void applyTheme();
     void rebuildWeekHeader();
     void updateDateGrid();
     void updateHeaderLabel();
@@ -69,6 +74,9 @@ private:
     QDate m_selectedDate;
     QDate m_displayedDate;
     int m_firstWeekDay = 0; // Sunday 首位，默认与主日历一致
+    // setStyleSheet 会触发 Qt 重设本控件调色板并再次派发 PaletteChange，
+    // 若不加保护会在 changeEvent -> applyTheme -> setStyleSheet 间无限递归。
+    bool m_applyingTheme = false;
 
     QLabel *m_dateLabel = nullptr;
     DImageButton *m_prevButton = nullptr;

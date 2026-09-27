@@ -24,6 +24,8 @@
 
 #include "sidebarcalendarwidget.h"
 
+#include "dde25/dde25common.h"
+
 #include <QLabel>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -102,6 +104,48 @@ SidebarCalendarWidget::SidebarCalendarWidget(QWidget *parent) : QWidget(parent)
 
     rebuildWeekHeader();
     setDate(QDate::currentDate());
+    // 标题、周几表头、自身背景随深浅主题初始化（运行时切换在 changeEvent 里再调）
+    applyTheme();
+}
+
+void SidebarCalendarWidget::changeEvent(QEvent *event)
+{
+    // 跟随系统调色板（深浅主题）变化刷新配色；做法同各对话框 setTheMe，
+    // 监听 PaletteChange / ApplicationPaletteChange。
+    if (event->type() == QEvent::PaletteChange
+            || event->type() == QEvent::ApplicationPaletteChange) {
+        // 重入保护：applyTheme() 里的 setStyleSheet() 会令 Qt 重设本控件调色板，
+        // 进而再次派发 PaletteChange，若再次进入 applyTheme 会无限递归直至栈溢出。
+        if (!m_applyingTheme) {
+            m_applyingTheme = true;
+            applyTheme();
+            m_applyingTheme = false;
+        }
+    }
+    QWidget::changeEvent(event);
+}
+
+void SidebarCalendarWidget::applyTheme()
+{
+    const bool dark = DDE25::themeType() == 2;
+
+    // 标题（年月）文字色：浅色黑、深色白
+    m_dateLabel->setStyleSheet(
+        dark ? "QLabel { color: rgba(255, 255, 255, 0.9); }"
+             : "QLabel { color: rgba(0, 0, 0, 0.8); }");
+
+    // 自身背景：与侧栏容器一致，浅色近白、深色深色半透明
+    setStyleSheet(
+        dark ? "QWidget#SidebarCalendarWidget { background-color: rgba(255, 255, 255, 0.04); border: none; }"
+             : "QWidget#SidebarCalendarWidget { background-color: #67f9f9fa; border: none; }");
+
+    // 周几表头颜色随主题刷新
+    rebuildWeekHeader();
+
+    // 日期数字按当前主题重绘（paintEvent 里读 themeType，这里强制刷新一次）
+    for (QPushButton *b : m_dayButtons) {
+        b->update();
+    }
 }
 
 void SidebarCalendarWidget::setFirstWeekday(int weekday)
@@ -171,6 +215,10 @@ void SidebarCalendarWidget::rebuildWeekHeader()
         QLabel *label = new QLabel(name);
         label->setAlignment(Qt::AlignCenter);
         label->setFixedSize(WeekLabelWidth, WeekLabelHeight);
+        // 周几表头文字色随深浅主题：浅色半透明黑、深色半透明白
+        label->setStyleSheet(DDE25::themeType() == 2
+            ? "QLabel { color: rgba(255, 255, 255, 0.7); }"
+            : "QLabel { color: rgba(0, 0, 0, 0.5); }");
 
         if ((i == m_firstWeekDay - 1 && m_firstWeekDay != 0) || i == m_firstWeekDay || (m_firstWeekDay == 0 && i == 6)) {
             label->setObjectName("CalendarHeaderWeekend");
@@ -272,7 +320,10 @@ void SidebarCalendarDayButton::paintEvent(QPaintEvent *event)
         painter.setPen(QColor("#b2b2b2"));
     } else {
         const int dow = m_date.dayOfWeek();
-        painter.setPen((dow == Qt::Saturday || dow == Qt::Sunday) ? QColor("#ff5b38") : QColor("#000000"));
+        const bool dark = DDE25::themeType() == 2;
+        painter.setPen((dow == Qt::Saturday || dow == Qt::Sunday)
+                           ? QColor("#ff5b38")
+                           : (dark ? QColor(Qt::white) : QColor("#000000")));
     }
 
     painter.drawText(rectf, QString::number(m_date.day()), QTextOption(Qt::AlignCenter));
