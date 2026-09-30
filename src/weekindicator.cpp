@@ -18,7 +18,6 @@
  */
 
 #include "weekindicator.h"
-#include "dde25/dde25common.h"
 
 #include <QLabel>
 #include <QDebug>
@@ -58,31 +57,6 @@ void WeekIndicator::setList(int weekday)
         label->setAlignment(Qt::AlignCenter);
         label->setFixedSize(m_cellWidth, DDECalendar::HeaderItemHeight);
         m_mainLayout->addWidget(label, 0, Qt::AlignCenter);
-    }
-
-    // 星期表头文字色随深浅主题（setList 每次重建标签，这里统一着色）
-    applyTheme();
-}
-
-void WeekIndicator::changeEvent(QEvent *event)
-{
-    // 跟随系统调色板（深浅主题）变化刷新配色；做法同各对话框 setTheMe，
-    // 监听 PaletteChange / ApplicationPaletteChange。
-    if (event->type() == QEvent::PaletteChange
-            || event->type() == QEvent::ApplicationPaletteChange) {
-        applyTheme();
-    }
-    QWidget::changeEvent(event);
-}
-
-void WeekIndicator::applyTheme()
-{
-    const bool dark = DDE25::themeType() == 2;
-    const QString color = dark ? "rgba(255, 255, 255, 0.8)" : "rgba(0, 0, 0, 0.5)";
-    for (int i = 0; i < m_mainLayout->count(); ++i) {
-        if (QWidget *label = m_mainLayout->itemAt(i)->widget()) {
-            label->setStyleSheet(QString("QLabel { color: %1; }").arg(color));
-        }
     }
 }
 

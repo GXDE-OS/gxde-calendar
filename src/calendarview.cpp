@@ -19,7 +19,6 @@
 
 #include "calendarview.h"
 #include "calendardbus.h"
-#include "dde25/dde25common.h"
 
 #include <QGridLayout>
 #include <QLabel>
@@ -105,35 +104,6 @@ CalendarView::CalendarView(QWidget *parent) : QWidget(parent)
         update();
         emit refreshSentenseFinished(m_holidayAPI->getDailySentense());
     });
-
-    // 日期/农历文字与分隔线配色随深浅主题初始化（运行时切换在 changeEvent 里再调）
-    applyTheme();
-}
-
-void CalendarView::changeEvent(QEvent *event)
-{
-    // 跟随系统调色板（深浅主题）变化刷新配色；做法同各对话框 setTheMe，
-    // 监听 PaletteChange / ApplicationPaletteChange。
-    if (event->type() == QEvent::PaletteChange
-            || event->type() == QEvent::ApplicationPaletteChange) {
-        applyTheme();
-    }
-    QWidget::changeEvent(event);
-}
-
-void CalendarView::applyTheme()
-{
-    const bool dark = DDE25::themeType() == 2;
-    // 日期数字：浅色黑字、深色白字（原 m_defaultTextColor / m_weekendsTextColor 写死 Qt::black）
-    m_defaultTextColor = dark ? QColor(Qt::white) : QColor(Qt::black);
-    m_weekendsTextColor = dark ? QColor(Qt::white) : QColor(Qt::black);
-    // 分隔线：浅色用淡黑、深色用淡白
-    if (m_separatorLine) {
-        m_separatorLine->setStyleSheet(
-            dark ? "border: 1px solid rgba(255, 255, 255, 0.08);"
-                 : "border: 1px solid rgba(0, 0, 0, 0.05);");
-    }
-    update();
 }
 
 void CalendarView::handleCurrentDateChanged(const QDate date, const CaLunarDayInfo &detail) {

@@ -99,11 +99,6 @@ private:
     void updateCurrentLunar(const CaLunarDayInfo &info);
     void updateCellSize();
     void resizeEvent(QResizeEvent *event) override;
-    void changeEvent(QEvent *event) override;
-
-private:
-    // 按系统深浅主题刷新日期/农历文字配色
-    void applyTheme();
 
 private slots:
     void cellClicked(QWidget *cell);

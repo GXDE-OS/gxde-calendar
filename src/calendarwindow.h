@@ -44,7 +44,6 @@ class WeekView;
 class DayView;
 class ViewSwitcher;
 class QPropertyAnimation;
-class QGraphicsOpacityEffect;
 class QStackedWidget;
 class QVBoxLayout;
 
@@ -118,7 +117,6 @@ private:
     QLabel * m_icon;
 
     QPropertyAnimation * m_scrollAnimation = nullptr;
-    QGraphicsOpacityEffect * m_fakeOpacity = nullptr;
 
     // DDE 15 翻月的滚轮节流（见 DDE25::WheelStepper）
     std::unique_ptr<DDE25::WheelStepper> m_wheelStepper;
@@ -137,6 +135,7 @@ private:
     void applySidebarTheme();
     void syncAnimationGeometry();
     QPixmap getCalendarSnapshot() const;
+    QPixmap joint(QPixmap & top, QPixmap & bottom) const;
     void updateTime() const;
     void updateSentense() const;
     void updateDate() const;
