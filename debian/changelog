@@ -1,4 +1,4 @@
-gxde-calendar (6.0.1) UNRELEASED; urgency=medium
+gxde-calendar (6.0.2) UNRELEASED; urgency=medium
 
   [ CharOfString ]
   * 移植深度日历6.6.0日历局布
@@ -7,8 +7,10 @@ gxde-calendar (6.0.1) UNRELEASED; urgency=medium
 
   [ gfdgd_xi ]
   * 补充编译依赖编译libical-dev
+  * 支持记忆最后一次使用的日历样式（DDE25/15）
+  * 支持记忆DDE25最后一次使用的年月周日选项
 
- -- gfdgd_xi <3025613752@qq.com>  Tue, 22 Sep 2026 23:04:03 +0800
+ -- gfdgd_xi <3025613752@qq.com>  Wed, 30 Sep 2026 22:07:10 +0800
 
 gxde-calendar (3.0.1) UNRELEASED; urgency=medium
 
