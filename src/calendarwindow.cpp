@@ -333,7 +333,15 @@ void CalendarWindow::initUI()
 
     connect(m_viewSwitcher, &ViewSwitcher::currentChanged,
         m_viewStack, &QStackedWidget::setCurrentIndex);
-    m_viewSwitcher->setCurrentIndex(MonthViewIndex);
+    // 记忆 DDE 25 样式里最后停留在的视图（年/月/周/日），
+    // 范围钳到 YearViewIndex ~ DayViewIndex，首次运行默认月视图。
+    const int savedViewIndex = qBound(static_cast<int>(YearViewIndex),
+        m_settings->value("dde25ViewIndex", MonthViewIndex).toInt(),
+        static_cast<int>(DayViewIndex));
+    m_viewSwitcher->setCurrentIndex(savedViewIndex);
+    connect(m_viewSwitcher, &ViewSwitcher::currentChanged, this, [this](int index) {
+        m_settings->setValue("dde25ViewIndex", index);
+    });
 
     connect(m_yearView, &YearView::dateClicked, this, [this](const QDate &date) {
         m_calendarView->setCurrentDate(date);
