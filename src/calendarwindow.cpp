@@ -81,6 +81,10 @@ CalendarWindow::CalendarWindow() :
     m_settings = new QSettings;
     m_dateSettings = new QSettings("deepin", "dde-dock-datetime", this);
 
+    // 记忆上次使用的样式（DDE 25 为 true，DDE 15 为 false）。
+    // 首次运行默认使用 DDE 25 样式，与历史行为保持一致。
+    m_dde25Layout = m_settings->value("dde25Layout", true).toBool();
+
     initUI();
     initAnimation();
     m_wheelStepper = std::make_unique<DDE25::WheelStepper>(
@@ -523,6 +527,7 @@ void CalendarWindow::menuItemInvoked(QAction *action)
 {
     if (action == m_layoutAction) {
         m_dde25Layout = !m_dde25Layout;
+        m_settings->setValue("dde25Layout", m_dde25Layout);
         applyLayout();
         return;
     }
