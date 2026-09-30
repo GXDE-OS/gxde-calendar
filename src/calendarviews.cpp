@@ -51,9 +51,25 @@ YearView::YearView(QWidget *parent) : QWidget(parent) {
     yearFont.setWeight(QFont::Medium);
     yearFont.setPixelSize(24);
     m_yearLabel->setFont(yearFont);
+    m_yearLabel->setStyleSheet("color: rgba(0, 0, 0, 0.8);");
 
     m_todayFrame = new QFrame(toolbar);
     m_todayFrame->setObjectName("YearTodayFrame");
+    m_todayFrame->setStyleSheet(
+        "QFrame#YearTodayFrame {"
+        "  background-color: white;"
+        "  border: 1px solid rgba(0, 0, 0, 0.1);"
+        "  border-radius: 4px;"
+        "}"
+        "QFrame#YearTodayFrame QPushButton {"
+        "  background-color: transparent;"
+        "  border: none;"
+        "  color: #000000;"
+        "  border-radius: 3px;"
+        "}"
+        "QFrame#YearTodayFrame QPushButton:hover {"
+        "  background-color: rgba(0, 0, 0, 0.05);"
+        "}");
     m_todayFrame->setFixedHeight(36);
 
     QHBoxLayout *todayLayout = new QHBoxLayout(m_todayFrame);
@@ -61,6 +77,7 @@ YearView::YearView(QWidget *parent) : QWidget(parent) {
     todayLayout->setSpacing(0);
 
     m_prevButton = new QPushButton(m_todayFrame);
+    m_prevButton->setIcon(DDE25::navArrowIcon(false, DDE25::themeType()));
     m_prevButton->setIconSize(QSize(16, 16));
     m_prevButton->setFixedSize(36, 36);
     m_prevButton->setFocusPolicy(Qt::NoFocus);
@@ -72,6 +89,7 @@ YearView::YearView(QWidget *parent) : QWidget(parent) {
     m_todayButton->setCursor(Qt::PointingHandCursor);
 
     m_nextButton = new QPushButton(m_todayFrame);
+    m_nextButton->setIcon(DDE25::navArrowIcon(true, DDE25::themeType()));
     m_nextButton->setIconSize(QSize(16, 16));
     m_nextButton->setFixedSize(36, 36);
     m_nextButton->setFocusPolicy(Qt::NoFocus);
@@ -100,61 +118,6 @@ YearView::YearView(QWidget *parent) : QWidget(parent) {
     });
 
     updateYearLabel();
-    // 年份标题、今天工具栏、翻年箭头随深浅主题初始化（运行时切换在 changeEvent 里再调）
-    applyTheme();
-}
-
-void YearView::changeEvent(QEvent *event)
-{
-    // 跟随系统调色板（深浅主题）变化，刷新年视图配色，
-    // 做法同各对话框的 setTheMe：监听 PaletteChange / ApplicationPaletteChange。
-    if (event->type() == QEvent::PaletteChange
-            || event->type() == QEvent::ApplicationPaletteChange) {
-        applyTheme();
-    }
-    QWidget::changeEvent(event);
-}
-
-void YearView::applyTheme()
-{
-    m_themeType = DDE25::themeType();
-    const bool dark = m_themeType == 2;
-
-    // 年份标题：浅色黑字、深色白字
-    m_yearLabel->setStyleSheet(
-        dark ? "color: rgba(255, 255, 255, 0.9);"
-             : "color: rgba(0, 0, 0, 0.8);");
-
-    // “今天”工具栏：与标题栏按钮、视图切换器观感一致
-    // （setStyleSheet 作用在子控件上，不会重入本控件的 changeEvent）
-    const QString frameBg = dark ? QStringLiteral("rgba(255, 255, 255, 0.08)")
-                                : QStringLiteral("white");
-    const QString frameBorder = dark ? QStringLiteral("rgba(255, 255, 255, 0.12)")
-                                    : QStringLiteral("rgba(0, 0, 0, 0.1)");
-    const QString btnColor = dark ? QStringLiteral("rgba(255, 255, 255, 0.9)")
-                                 : QStringLiteral("#000000");
-    const QString hoverBg = dark ? QStringLiteral("rgba(255, 255, 255, 0.1)")
-                                : QStringLiteral("rgba(0, 0, 0, 0.05)");
-    m_todayFrame->setStyleSheet(
-        QString("QFrame#YearTodayFrame {"
-                "  background-color: %1;"
-                "  border: 1px solid %2;"
-                "  border-radius: 4px;"
-                "}"
-                "QFrame#YearTodayFrame QPushButton {"
-                "  background-color: transparent;"
-                "  border: none;"
-                "  color: %3;"
-                "  border-radius: 3px;"
-                "}"
-                "QFrame#YearTodayFrame QPushButton:hover {"
-                "  background-color: %4;"
-                "}")
-            .arg(frameBg, frameBorder, btnColor, hoverBg));
-
-    // 翻年箭头图标随深浅主题（dde25common::navArrowIcon：深色用浅色箭头、浅色用深色箭头）
-    m_prevButton->setIcon(DDE25::navArrowIcon(false, m_themeType));
-    m_nextButton->setIcon(DDE25::navArrowIcon(true, m_themeType));
 }
 
 void YearView::setCurrentDate(const QDate &date) {
@@ -214,9 +177,6 @@ void YearView::paintEvent(QPaintEvent *event) {
     const int year = m_currentDate.year();
     const QDate today = QDate::currentDate();
 
-    // 日期/月份标题文字色：浅色主题黑、深色主题白（避免黑字黑底看不清）
-    const QColor dayText = (m_themeType == 2) ? QColor(Qt::white) : DefaultColor;
-
     QFont headerFont = painter.font();
     headerFont.setPixelSize(14);
     headerFont.setBold(true);
@@ -233,7 +193,7 @@ void YearView::paintEvent(QPaintEvent *event) {
 
         // Month title
         painter.setFont(headerFont);
-        painter.setPen(dayText);
+        painter.setPen(DefaultColor);
         const QRect headerRect(area.x(), area.y(), area.width(),
           MonthHeaderHeight);
         painter.drawText(headerRect, Qt::AlignCenter, QLocale().toString(
@@ -274,7 +234,7 @@ void YearView::paintEvent(QPaintEvent *event) {
             } else {
                 const int dow = date.dayOfWeek();
                 painter.setPen((dow == Qt::Saturday || dow == Qt::Sunday) ?
-                    WeekendColor : dayText);
+                    WeekendColor : DefaultColor);
             }
             painter.drawText(cell, Qt::AlignCenter, QString::number(dayNum));
         }

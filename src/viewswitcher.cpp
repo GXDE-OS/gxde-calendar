@@ -25,6 +25,26 @@ ViewSwitcher::ViewSwitcher(QWidget *parent)
     : QWidget(parent) {
     setObjectName("ViewSwitcher");
     setAttribute(Qt::WA_StyledBackground, true);
+    setStyleSheet(
+        "QWidget#ViewSwitcher {"
+        "  background-color: white;"
+        "  border: 1px solid rgba(0, 0, 0, 0.1);"
+        "  border-radius: 4px;"
+        "}"
+        "QWidget#ViewSwitcher QPushButton {"
+        "  background-color: transparent;"
+        "  border: none;"
+        "  color: #000000;"
+        "  padding: 0px 6px;"
+        "  border-radius: 3px;"
+        "}"
+        "QWidget#ViewSwitcher QPushButton:hover {"
+        "  background-color: rgba(0, 0, 0, 0.05);"
+        "}"
+        "QWidget#ViewSwitcher QPushButton:checked {"
+        "  background-color: #2ca7f8;"
+        "  color: white;"
+        "}");
 
     QHBoxLayout *layout = new QHBoxLayout(this);
     layout->setContentsMargins(1, 1, 1, 1);
@@ -35,9 +55,6 @@ ViewSwitcher::ViewSwitcher(QWidget *parent)
 
     connect(m_group, &QButtonGroup::idClicked, this,
         &ViewSwitcher::currentChanged);
-
-    // 容器背景、边框、文字色随深浅主题；运行时切换在 changeEvent 里再调一次
-    applyTheme();
 }
 
 void ViewSwitcher::setLabels(const QStringList &labels) {
@@ -77,59 +94,4 @@ void ViewSwitcher::setCurrentIndex(int index) {
 
 int ViewSwitcher::currentIndex() const {
     return m_group->checkedId();
-}
-
-void ViewSwitcher::changeEvent(QEvent *event)
-{
-    // 跟随系统调色板（深浅主题）变化，刷新分段按钮配色，
-    // 做法同各对话框的 setTheMe：监听 PaletteChange / ApplicationPaletteChange。
-    if (event->type() == QEvent::PaletteChange
-            || event->type() == QEvent::ApplicationPaletteChange) {
-        // 重入保护：applyTheme() 里的 setStyleSheet() 会令 Qt 重设本控件调色板，
-        // 进而再次派发 PaletteChange，若再次进入 applyTheme 会无限递归直至栈溢出。
-        if (!m_applyingTheme) {
-            m_applyingTheme = true;
-            applyTheme();
-            m_applyingTheme = false;
-        }
-    }
-    QWidget::changeEvent(event);
-}
-
-void ViewSwitcher::applyTheme()
-{
-    const bool dark = DDE25::themeType() == 2;
-
-    // 浅色：白底 + 半透明黑边框 + 黑字；深色：深色半透明底 + 浅色边框 + 白字，
-    // 观感与标题栏按钮、gxde-file-manager 标题栏控件保持一致。
-    const QString containerBg = dark ? QStringLiteral("rgba(255, 255, 255, 0.08)")
-                                    : QStringLiteral("white");
-    const QString containerBorder = dark ? QStringLiteral("rgba(255, 255, 255, 0.12)")
-                                        : QStringLiteral("rgba(0, 0, 0, 0.1)");
-    const QString textColor = dark ? QStringLiteral("rgba(255, 255, 255, 0.9)")
-                                   : QStringLiteral("#000000");
-    const QString hoverBg = dark ? QStringLiteral("rgba(255, 255, 255, 0.1)")
-                                 : QStringLiteral("rgba(0, 0, 0, 0.05)");
-
-    setStyleSheet(
-        QString("QWidget#ViewSwitcher {"
-                "  background-color: %1;"
-                "  border: 1px solid %2;"
-                "  border-radius: 4px;"
-                "}"
-                "QWidget#ViewSwitcher QPushButton {"
-                "  background-color: transparent;"
-                "  border: none;"
-                "  color: %3;"
-                "  padding: 0px 6px;"
-                "  border-radius: 3px;"
-                "}"
-                "QWidget#ViewSwitcher QPushButton:hover {"
-                "  background-color: %4;"
-                "}"
-                "QWidget#ViewSwitcher QPushButton:checked {"
-                "  background-color: #2ca7f8;"
-                "  color: white;"
-                "}")
-            .arg(containerBg, containerBorder, textColor, hoverBg));
 }

@@ -39,11 +39,8 @@ signals:
 protected:
     void paintEvent(QPaintEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
-    void changeEvent(QEvent *event) override;
 
 private:
-    // 按系统深浅主题刷新年份标题、今天工具栏与翻年箭头配色
-    void applyTheme();
     QRect monthRect(int monthIndex) const;
     int firstWeekdayOffset(const QDate &firstDay) const;
     void switchYear(int offset);
@@ -51,7 +48,6 @@ private:
 
     QDate m_currentDate;
     int m_firstWeekDay = 0;
-    int m_themeType = 0;
 
     QLabel *m_yearLabel = nullptr;
     QPushButton *m_prevButton = nullptr;
