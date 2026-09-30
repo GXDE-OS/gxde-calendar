@@ -42,6 +42,7 @@
 #include <QStackedWidget>
 #include <QPropertyAnimation>
 #include <QWheelEvent>
+#include <QGraphicsOpacityEffect>
 #include <QPainter>
 #include <QMenu>
 #include <DTitlebar>
@@ -180,6 +181,8 @@ void CalendarWindow::initUI()
 
     m_fakeContent = new QLabel(m_animationContainer);
     m_fakeContent->setStyleSheet("QLabel { background: rgba(0, 0, 0, 0) }");
+    m_fakeOpacity = new QGraphicsOpacityEffect(m_fakeContent);
+    m_fakeContent->setGraphicsEffect(m_fakeOpacity);
 
     m_dde15Layout = new QVBoxLayout;
     m_dde15Layout->setContentsMargins(ContentLeftRightPadding, 0, ContentLeftRightPadding, 0);
@@ -430,11 +433,14 @@ void CalendarWindow::initUI()
 
 void CalendarWindow::initAnimation()
 {
-    m_scrollAnimation = new QPropertyAnimation(m_fakeContent, "pos");
+    // 旧月份靠淡出这一层露出已经更新好的新月份，避免滑动时新旧两月格子在
+    // 网格里混排重叠。
+    m_scrollAnimation = new QPropertyAnimation(m_fakeOpacity, "opacity");
     m_scrollAnimation->setDuration(300);
 
     connect(m_scrollAnimation, &QPropertyAnimation::finished, [this]{
         m_animationContainer->hide();
+        m_fakeOpacity->setOpacity(1.0);
     });
 }
 
@@ -682,11 +688,11 @@ void CalendarWindow::slideMonth(int count)
         return;
     }
 
+    // 先截下当前（旧）月份的网格，翻到目标月后，靠淡出这一层露出已经更新好的
+    // 新月份，而不是把两个月拼在一起上下滑动——那样会让新旧两月的格子在网格里
+    // 混排重叠，很难看。
     syncAnimationGeometry();
-    m_animationContainer->show();
-    m_animationContainer->raise();
-
-    QPixmap one = getCalendarSnapshot();
+    const QPixmap oldPix = getCalendarSnapshot();
 
     // 直接把年月拨到目标月：上面那两个 signal 每个都会带回一次整屏刷新，
     // 这里挡掉中间的过渡月份，只让 handleCurrentYearMonthChanged 触发一次切换
@@ -696,14 +702,16 @@ void CalendarWindow::slideMonth(int count)
     m_infoView->blockSignals(false);
     handleCurrentYearMonthChanged(target.year(), target.month());
 
-    QPixmap two = getCalendarSnapshot();
-    const bool next = count > 0;
-    QPixmap pixmap = next ? joint(one, two) : joint(two, one);
-    m_fakeContent->setPixmap(pixmap);
+    m_fakeContent->setPixmap(oldPix);
+    m_fakeContent->setFixedSize(oldPix.size());
+    m_fakeOpacity->setOpacity(1.0);
 
-    m_scrollAnimation->setStartValue(QPoint(0, next ? 0 : -one.height()));
-    m_scrollAnimation->setEndValue(QPoint(0, next ? -one.height() : 0));
+    m_animationContainer->show();
+    m_animationContainer->raise();
 
+    m_scrollAnimation->stop();
+    m_scrollAnimation->setStartValue(1.0);
+    m_scrollAnimation->setEndValue(0.0);
     m_scrollAnimation->start();
 }
 
@@ -720,26 +728,24 @@ void CalendarWindow::syncAnimationGeometry() {
     m_animationContainer->setGeometry(QRect(m_calendarView->mapTo(m_contentBackground, grid.topLeft()),
                                             grid.size()));
     m_fakeContent->setFixedSize(grid.width(), grid.height() * 2);
+
+    // 把容器裁剪到自身矩形：m_fakeContent 高度是网格的 2 倍，滑动时另一半
+    // 会溢出容器画到 InfoView 等相邻区域，造成上/下个月日历重叠、很难看。
+    m_animationContainer->setMask(QRegion(m_animationContainer->rect()));
 }
 
 QPixmap CalendarWindow::getCalendarSnapshot() const
 {
-    return m_calendarView->grab(m_calendarView->gridRect());
-}
-
-QPixmap CalendarWindow::joint(QPixmap &top, QPixmap &bottom) const
-{
-    QPixmap target(qMax(top.width(), bottom.width()),
-                   top.height() + bottom.height());
-
-    target.fill(Qt::white);
-    QPainter painter;
-    painter.begin(&target);
-    painter.drawPixmap(0, 0, top);
-    painter.drawPixmap(0, top.height(), bottom);
-    painter.end();
-
-    return target;
+    // 截图本身是透明的（CalendarView 背景透明），这里垫一层窗口背景色让它变成
+    // 不透明：淡出时旧月份才能完全盖住底层已经翻好的新月份，否则新月份会从
+    // 透明单元格里透出来，又变成“旧数字叠在新格子上”。
+    const QRect grid = m_calendarView->gridRect();
+    const QPixmap grabbed = m_calendarView->grab(grid);
+    QPixmap out(grabbed.size());
+    out.fill(m_calendarView->palette().color(QPalette::Window));
+    QPainter painter(&out);
+    painter.drawPixmap(0, 0, grabbed);
+    return out;
 }
 
 void CalendarWindow::updateSentense() const

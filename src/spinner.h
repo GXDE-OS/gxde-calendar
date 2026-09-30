@@ -54,6 +54,13 @@ private:
 
     void setPrevButtonDisabled(bool disabled) const;
     void setNextButtonDisabled(bool disabled) const;
+
+protected:
+    void changeEvent(QEvent *event) override;
+
+private:
+    // 按系统深浅主题刷新数字与翻月箭头配色
+    void applyTheme();
 };
 
 #endif // SPINNER_H

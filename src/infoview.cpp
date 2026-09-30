@@ -19,6 +19,7 @@
 
 #include "infoview.h"
 #include "spinner.h"
+#include "dde25/dde25common.h"
 
 #include <QDebug>
 #include <QLabel>
@@ -40,8 +41,9 @@ InfoView::InfoView(QFrame *parent) :
     font.setPixelSize(30);
     m_timeLabel->setFont(font);
 
-    m_festivalLabel->setStyleSheet("font-size: 14px; color: #303030");
-    m_sentenseLabel->setStyleSheet("font-size: 14px; color: #303030");
+    // 节日、每日一言文字色随深浅主题，由 applyTheme() 统一处理
+    m_festivalLabel->setStyleSheet("font-size: 14px;");
+    m_sentenseLabel->setStyleSheet("font-size: 14px;");
 
     m_todayButton->setText(tr("Today"));
     m_todayButton->setStyleSheet("Dtk--Widget--DLinkButton {"
@@ -124,6 +126,32 @@ InfoView::InfoView(QFrame *parent) :
         }
     });
     connect(m_todayButton, &DLinkButton::clicked, this, &InfoView::todayButtonClicked);
+
+    // 时间 / 节日 / 每日一言文字色随深浅主题初始化（运行时切换在 changeEvent 里再调）
+    applyTheme();
+}
+
+void InfoView::changeEvent(QEvent *event)
+{
+    // 跟随系统调色板（深浅主题）变化刷新配色；做法同各对话框 setTheMe，
+    // 监听 PaletteChange / ApplicationPaletteChange。
+    if (event->type() == QEvent::PaletteChange
+            || event->type() == QEvent::ApplicationPaletteChange) {
+        applyTheme();
+    }
+    QFrame::changeEvent(event);
+}
+
+void InfoView::applyTheme()
+{
+    const bool dark = DDE25::themeType() == 2;
+    const QString labelStyle = dark
+        ? "font-size: 14px; color: rgba(255, 255, 255, 0.85);"
+        : "font-size: 14px; color: #303030;";
+    m_festivalLabel->setStyleSheet(labelStyle);
+    m_sentenseLabel->setStyleSheet(labelStyle);
+    m_timeLabel->setStyleSheet(dark ? "color: rgba(255, 255, 255, 0.95);"
+                                    : "color: #303030;");
 }
 
 void InfoView::setSentense(const QString &sentense) const

@@ -55,7 +55,12 @@ public slots:
 
     void setTodayButtonVisible(bool visible) const;
 
+protected:
+    void changeEvent(QEvent *event) override;
+
 private:
+    // 按系统深浅主题刷新时间/节日/每日一言文字配色
+    void applyTheme();
     QLabel * m_timeLabel;
     QLabel * m_sentenseLabel;
     QLabel * m_festivalLabel;

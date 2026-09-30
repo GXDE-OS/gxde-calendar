@@ -32,7 +32,12 @@ public:
     void setList(int weekday);
     void setCellWidth(int width);
 
+protected:
+    void changeEvent(QEvent *event) override;
+
 private:
+    // 按系统深浅主题刷新星期表头文字配色
+    void applyTheme();
     int checkDay(int weekday);
 
 private:
