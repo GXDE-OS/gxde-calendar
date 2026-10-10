@@ -300,7 +300,11 @@ QString ICalFormat::toString(const Calendar::Ptr &cal, const QString &notebook, 
             if (!tz) {
                 qCritical() << "bad time zone";
             } else {
+#if ICAL_CHECK_VERSION(3, 99, 99)
+                component = icalcomponent_clone(icaltimezone_get_component(tz));
+#else
                 component = icalcomponent_new_clone(icaltimezone_get_component(tz));
+#endif
                 icalcomponent_add_component(calendar, component);
                 icaltimezone_free(tz, 1);
             }
@@ -366,7 +370,16 @@ QByteArray ICalFormat::toRawString(const Incidence::Ptr &incidence)
 
 QString ICalFormat::toString(RecurrenceRule *recurrence)
 {
+#if ICAL_CHECK_VERSION(3, 99, 99)
+    struct icalrecurrencetype *recur = d->mImpl->writeRecurrenceRule(recurrence);
+    if (!recur) {
+        return QString();
+    }
+    icalproperty *property = icalproperty_new_rrule(recur);
+    icalrecurrencetype_unref(recur);
+#else
     icalproperty *property = icalproperty_new_rrule(d->mImpl->writeRecurrenceRule(recurrence));
+#endif
     QString text = QString::fromUtf8(icalproperty_as_ical_string(property));
     icalproperty_free(property);
     return text;
@@ -379,15 +392,28 @@ bool ICalFormat::fromString(RecurrenceRule *recurrence, const QString &rrule)
     }
     bool success = true;
     icalerror_clear_errno();
+#if ICAL_CHECK_VERSION(3, 99, 99)
+    struct icalrecurrencetype *recur = icalrecurrencetype_new_from_string(rrule.toLatin1().constData());
+#else
     struct icalrecurrencetype recur = icalrecurrencetype_from_string(rrule.toLatin1().constData());
+#endif
     if (icalerrno != ICAL_NO_ERROR) {
         qDebug() << "Recurrence parsing error:" << icalerror_strerror(icalerrno);
         success = false;
     }
 
+#if ICAL_CHECK_VERSION(3, 99, 99)
+    if (success && recur) {
+        d->mImpl->readRecurrence(*recur, recurrence);
+    }
+    if (recur) {
+        icalrecurrencetype_unref(recur);
+    }
+#else
     if (success) {
         d->mImpl->readRecurrence(recur, recurrence);
     }
+#endif
 
     return success;
 }

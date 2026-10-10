@@ -6,8 +6,9 @@
 #      Qt 才有 QT_VERSION_MAJOR。这里直接写 Qt6，子目录不再单独探测。
 #   2. 上游把 -pie 塞进了 CMAKE_CXX_FLAGS。那是链接期参数，对静态库没有意义，
 #      位置无关由下面的 POSITION_INDEPENDENT_CODE 负责。
-#   3. 上游链了 Qt::DBus 和 -licalss/-licalvcal。这套源码没有任何 QDBus 引用，
-#      libical.pc 的 Libs 里已经含 -lical -licalss -licalvcal，不必再单列。
+#   3. 上游链了 Qt::DBus。这套源码没有任何 QDBus 引用，不再链接。
+#      libical 3 的 libical.pc 里含 -lical -licalss -licalvcal，但 libical 4 的只有 -lical，
+#      所以 icalss（icalclassify）和 icalvcal（vCalendar）单独列出。
 
 cmake_minimum_required(VERSION 3.7)
 project(kcalendarcore)
@@ -32,4 +33,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Core
     Qt6::Gui
     ${3rd_lib_LIBRARIES}
+    icalss
+    icalvcal
 )

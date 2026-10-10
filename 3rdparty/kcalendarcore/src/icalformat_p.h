@@ -115,7 +115,12 @@ public:
     icalproperty *writeOrganizer(const Person &organizer);
     icalproperty *writeAttachment(const Attachment &attach);
     icalproperty *writeRecurrenceRule(Recurrence *);
+#if ICAL_CHECK_VERSION(3, 99, 99)
+    // libical 4: the caller owns the result and must icalrecurrencetype_unref() it
+    icalrecurrencetype *writeRecurrenceRule(RecurrenceRule *recur);
+#else
     icalrecurrencetype writeRecurrenceRule(RecurrenceRule *recur);
+#endif
     icalcomponent *writeAlarm(const Alarm::Ptr &alarm);
     icalproperty *writeConference(const Conference &conference);
 

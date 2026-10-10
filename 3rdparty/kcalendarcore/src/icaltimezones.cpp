@@ -239,7 +239,11 @@ icalcomponent *ICalTimeZoneParser::icalcomponentFromQTimeZone(const QTimeZone &t
         icalcomponent_add_property(phaseComp, icalproperty_new_tzoffsetfrom(preOffset));
         icalcomponent_add_property(phaseComp, icalproperty_new_tzoffsetto(transit.offsetFromUtc));
         // Create a component to hold initial RRULE if any, plus all RDATEs
+#if ICAL_CHECK_VERSION(3, 99, 99)
+        icalcomponent *phaseComp1 = icalcomponent_clone(phaseComp);
+#else
         icalcomponent *phaseComp1 = icalcomponent_new_clone(phaseComp);
+#endif
         icalcomponent_add_property(phaseComp1, icalproperty_new_dtstart(writeLocalICalDateTime(transits.at(i).atUtc, preOffset)));
         bool useNewRRULE = false;
 
@@ -336,6 +340,29 @@ icalcomponent *ICalTimeZoneParser::icalcomponentFromQTimeZone(const QTimeZone &t
                 }
                 if (times.count() > (useNewRRULE ? minPhaseCount : minRuleCount)) {
                     // There are enough dates to combine into an RRULE
+#if ICAL_CHECK_VERSION(3, 99, 99)
+                    icalrecurrencetype *rp = icalrecurrencetype_new();
+                    if (!rp) {
+                        break;
+                    }
+                    icalrecurrencetype &r = *rp;
+                    r.freq = ICAL_YEARLY_RECURRENCE;
+                    icalrecur_resize_by(&r.by[ICAL_BY_MONTH], 1);
+                    r.by[ICAL_BY_MONTH].data[0] = month;
+                    if (rule & DAY_OF_MONTH) {
+                        icalrecur_resize_by(&r.by[ICAL_BY_MONTH_DAY], 1);
+                        r.by[ICAL_BY_MONTH_DAY].data[0] = dayOfMonth;
+                    } else if (rule & WEEKDAY_OF_MONTH) {
+                        icalrecur_resize_by(&r.by[ICAL_BY_DAY], 1);
+                        r.by[ICAL_BY_DAY].data[0] = (dayOfWeek % 7 + 1) + (nthFromStart * 8); // Sunday = 1
+                    } else if (rule & LAST_WEEKDAY_OF_MONTH) {
+                        icalrecur_resize_by(&r.by[ICAL_BY_DAY], 1);
+                        r.by[ICAL_BY_DAY].data[0] = -(dayOfWeek % 7 + 1) - (nthFromEnd * 8); // Sunday = 1
+                    }
+                    r.until = writeLocalICalDateTime(times.takeAt(times.size() - 1), preOffset);
+                    icalproperty *prop = icalproperty_new_rrule(rp);
+                    icalrecurrencetype_unref(rp);
+#else
                     icalrecurrencetype r;
                     icalrecurrencetype_clear(&r);
                     r.freq = ICAL_YEARLY_RECURRENCE;
@@ -349,10 +376,15 @@ icalcomponent *ICalTimeZoneParser::icalcomponentFromQTimeZone(const QTimeZone &t
                     }
                     r.until = writeLocalICalDateTime(times.takeAt(times.size() - 1), preOffset);
                     icalproperty *prop = icalproperty_new_rrule(r);
+#endif
                     if (useNewRRULE) {
                         // This RRULE doesn't start from the phase start date, so set it into
                         // a new STANDARD/DAYLIGHT component in the VTIMEZONE.
+#if ICAL_CHECK_VERSION(3, 99, 99)
+                        icalcomponent *c = icalcomponent_clone(phaseComp);
+#else
                         icalcomponent *c = icalcomponent_new_clone(phaseComp);
+#endif
                         icalcomponent_add_property(c, icalproperty_new_dtstart(writeLocalICalDateTime(times[0], preOffset)));
                         icalcomponent_add_property(c, prop);
                         icalcomponent_add_component(tzcomp, c);
@@ -622,7 +654,15 @@ bool ICalTimeZoneParser::parsePhase(icalcomponent *c, bool daylight, ICalTimeZon
                 RecurrenceRule r;
                 ICalFormat icf;
                 ICalFormatImpl impl(&icf);
+#if ICAL_CHECK_VERSION(3, 99, 99)
+                struct icalrecurrencetype *rrule = icalproperty_get_rrule(p);
+                if (!rrule) {
+                    break;
+                }
+                impl.readRecurrence(*rrule, &r);
+#else
                 impl.readRecurrence(icalproperty_get_rrule(p), &r);
+#endif
                 r.setStartDt(utcStart);
                 // The end date time specified in an RRULE must be in UTC.
                 // We can not guarantee correctness if this is not the case.
