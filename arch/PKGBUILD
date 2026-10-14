@@ -1,0 +1,32 @@
+# Maintainer: CharOfString <root@charofstring.cc>
+pkgname=gxde-calendar-git
+pkgver=6.0.3
+pkgrel=1
+pkgdesc='Calendar software for GXDE OS'
+arch=('x86_64' 'aarch64')
+url="https://github.com/GXDE-OS/gxde-calendar"
+license=('GPL-3.0-or-later')
+# 3rdparty/kcalendarcore 静态链接进程序，需要 libical ・ The bundled kcalendarcore is linked in statically and needs libical.
+depends=('dtk2widget-qt6-git' 'dtk6core-git' 'qt6-base' 'libical' 'hicolor-icon-theme' 'libgcc'
+         'libstdc++' 'glibc')
+makedepends=('git' 'cmake' 'ninja' 'pkgconf' 'qt6-tools' 'deepin-gettext-tools-git')
+provides=('gxde-calendar')
+conflicts=('gxde-calendar')
+source=()
+sha512sums=()
+
+# 直接使用 PKGBUILD 所在的 git 仓库作为源码 ・ Build from the git checkout this PKGBUILD lives in.
+_srcroot() {
+  git -C "$startdir" rev-parse --show-toplevel
+}
+
+build() {
+  cmake -B build -S "$(_srcroot)" -GNinja \
+    -DCMAKE_BUILD_TYPE=None \
+    -DCMAKE_INSTALL_PREFIX=/usr
+  ninja -C build
+}
+
+package() {
+  DESTDIR="$pkgdir" ninja -C build install
+}
