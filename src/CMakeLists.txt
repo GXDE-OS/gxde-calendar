@@ -46,6 +46,7 @@ list(APPEND SRCS
 # DDE 25 视图：移植自 dde-calendar，仅供 DDE 25 布局使用
 list(APPEND SRCS
 ./dde25/dde25common.h
+./dde25/uitheme.h
 ./dde25/customframe.h
 ./dde25/cfocusitem.h
 ./dde25/cscenebackgrounditem.h
@@ -90,6 +91,7 @@ list(APPEND SRCS
 ./dde25/scheduledlg.h
 ./dde25/scheduledlg.cpp
 ./dde25/dde25common.cpp
+./dde25/uitheme.cpp
 ./dde25/customframe.cpp
 ./dde25/cfocusitem.cpp
 ./dde25/cscenebackgrounditem.cpp

@@ -26,6 +26,7 @@
 
 #include "constants.h"
 #include "dde25common.h"
+#include "uitheme.h"
 
 #include <QFocusEvent>
 #include <QHBoxLayout>
@@ -73,14 +74,9 @@ void CMonthDayView::setSelectDate(const QDate &date)
 
 void CMonthDayView::setTheMe(int type)
 {
-    // 外框配色对齐 gxde-file-manager 的地址栏
-    if (type == 0 || type == 1) {
-        m_frameColor = QColor("#FFFFFF");
-        m_borderColor = QColor(0, 0, 0, 0x1e);
-    } else if (type == 2) {
-        m_frameColor = QColor("#343434");
-        m_borderColor = QColor(0, 0, 0, 0);
-    }
+    // 外框底色取调色板，描边取中性色派生，深浅主题同一套写法
+    m_frameColor = DDE25::panelColor();
+    m_borderColor = DDE25::borderColor();
     CMonthRect::setTheMe(type);
     update();
 }
@@ -332,17 +328,10 @@ void CMonthRect::paintItem(QPainter *painter, const QRectF &rect, bool drawFocus
 void CMonthRect::setTheMe(int type)
 {
     m_themetype = type;
-    if (type == 0 || type == 1) {
-        m_defaultTextColor = QColor("#000000");
-        m_defaultTextColor.setAlphaF(0.7);
-        m_currentDayTextColor = Qt::white;
-        m_backgroundcurrentDayColor = DDE25::systemActiveColor();
-    } else if (type == 2) {
-        m_defaultTextColor = QColor("#FFFFFF");
-        m_defaultTextColor.setAlphaF(0.7);
-        m_currentDayTextColor = "#C0C6D4";
-        m_backgroundcurrentDayColor = DDE25::systemActiveColor();
-    }
+    // 日期文字、选中态文字与选中圆底：三个层级 + 主色，不再按主题分支写黑白
+    m_defaultTextColor = DDE25::textColor(DDE25::TextSecondary);
+    m_currentDayTextColor = DDE25::onAccentColor();
+    m_backgroundcurrentDayColor = DDE25::accentColor();
     m_dayNumFont.setPixelSize(DDECalendar::FontSizeSixteen);
     m_dayNumFont.setWeight(QFont::Light);
 }

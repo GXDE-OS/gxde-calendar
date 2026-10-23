@@ -26,6 +26,7 @@
 
 #include "constants.h"
 #include "dde25common.h"
+#include "uitheme.h"
 #include "schedulecolors.h"
 
 #include <QFontMetrics>
@@ -186,8 +187,7 @@ void CAllDayScheduleItem::paintBackground(QPainter *painter, const QRectF &rect)
                            fillRect.width() - 1, fillRect.height() - 1);
         painter->save();
         QPen pen;
-        QColor selcolor = (DDE25::themeType() == 2) ? QColor("#FFFFFF") : QColor("#000000");
-        selcolor.setAlphaF(0.08);
+        const QColor selcolor = DDE25::hoverColor();
         pen.setColor(selcolor);
         pen.setWidthF(1);
         pen.setStyle(Qt::SolidLine);
@@ -197,10 +197,8 @@ void CAllDayScheduleItem::paintBackground(QPainter *painter, const QRectF &rect)
         painter->restore();
     }
     if (selectflag) {
-        // 选中时整块再叠一层 5% 透明色。参考实现用的是固定黑色，
-        // 深色主题下叠黑反而发闷，这里跟随主题取色（与 CScheduleItem 一致）
-        QColor selcolor = (DDE25::themeType() == 2) ? QColor("#FFFFFF") : QColor("#000000");
-        selcolor.setAlphaF(0.05);
+        // 选中时整块再叠一层悬浮色（与悬浮描边同一个值，见 uitheme.h 的约束 2）
+        const QColor selcolor = DDE25::hoverColor();
         painter->setBrush(selcolor);
         painter->setPen(Qt::NoPen);
         painter->drawRoundedRect(fillRect, radius, radius);

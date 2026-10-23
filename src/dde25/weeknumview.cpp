@@ -25,6 +25,7 @@
 #include "weeknumview.h"
 
 #include "dde25common.h"
+#include "uitheme.h"
 
 #include <QEvent>
 #include <QFocusEvent>
@@ -64,23 +65,12 @@ void CWeekNumWidget::setTheMe(int type)
 {
     m_themetype = type;
 
-    if (type == 0 || type == 1) {
-        m_defaultTextColor = QColor("#000000");
-        m_defaultTextColor.setAlphaF(0.7);
-        m_backgrounddefaultColor = Qt::white;
-        m_currentDayTextColor = Qt::white;
-        m_backgroundcurrentDayColor = DDE25::systemActiveColor();
-        m_fillColor = "#FFFFFF";
-    } else if (type == 2) {
-        m_defaultTextColor = QColor("#FFFFFF");
-        m_defaultTextColor.setAlphaF(0.7);
-        m_backgrounddefaultColor = "#FFFFFF";
-        m_backgrounddefaultColor.setAlphaF(0.05);
-        m_currentDayTextColor = "#B8D3FF";
-        m_backgroundcurrentDayColor = DDE25::systemActiveColor();
-        m_fillColor = "#000000";
-        m_fillColor.setAlphaF(0.05);
-    }
+    // 周数字、常态底、选中态文字与圆底、整条底色：全部从主题色派生
+    m_defaultTextColor = DDE25::textColor(DDE25::TextSecondary);
+    m_backgrounddefaultColor = DDE25::panelColor();
+    m_currentDayTextColor = DDE25::onAccentColor();
+    m_backgroundcurrentDayColor = DDE25::accentColor();
+    m_fillColor = DDE25::panelColor();
     update();
 }
 

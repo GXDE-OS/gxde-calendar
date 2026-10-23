@@ -18,6 +18,7 @@
  */
 
 #include "calendarwindow.h"
+#include "dde25/uitheme.h"
 #include "environments.h"
 
 #include <QProcess>
@@ -33,16 +34,24 @@
 DWIDGET_USE_NAMESPACE
 DCORE_USE_NAMESPACE
 
+// QSS 是静态文本，没法在文件里调用主题函数，所以启动时按主题色现拼一份：
+// 颜色只来自 DDE25 的三个主题色及其透明度派生（见 dde25/uitheme.h 的约束 1）。
 QString GetStyleSheetContent() {
-    QFile file(":/resources/dde-calendar.qss");
-    bool result = file.open(QFile::ReadOnly);
-    if (result) {
-        QString content(file.readAll());
-        file.close();
-        return content;
-    } else {
-        return "";
-    }
+    return QStringLiteral(
+               "QFrame#CalendarBackground {"
+               "  background-color: %1;"
+               "}"
+               "QLabel#CalendarHeaderWeekday {"
+               "  font-size: 14px;"
+               "  color: %2;"
+               "}"
+               "QLabel#CalendarHeaderWeekend {"
+               "  font-size: 14px;"
+               "  color: %3;"
+               "}")
+        .arg(DDE25::css(DDE25::panelColor()),
+             DDE25::css(DDE25::textColor()),
+             DDE25::css(DDE25::alertColor()));
 }
 
 QRect PrimaryRect() {

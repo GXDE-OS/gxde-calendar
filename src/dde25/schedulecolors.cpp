@@ -28,6 +28,7 @@
 
 #include "schedule/calendarservice.h"
 #include "schedule/dscheduletype.h"
+#include "uitheme.h"
 
 namespace DDE25 {
 
@@ -41,9 +42,9 @@ CSchedulesColor scheduleColorByType(const QString &typeID)
         typeColor = QColor(type->getColorCode());
     }
 
-    // 类型查不到（或颜色串坏了）时给中性灰，否则 alpha 0.2 的黑色等于什么都看不见
+    // 类型查不到（或颜色串坏了）时给中性色，否则 alpha 0.2 的黑色等于什么都看不见
     if (!typeColor.isValid()) {
-        typeColor = QColor("#717171");
+        typeColor = neutralColor();
     }
 
     // 四态透明度与参考实现一致
@@ -61,10 +62,9 @@ CSchedulesColor scheduleColorByType(const QString &typeID)
 
 QColor scheduleTextColor()
 {
-    // 参考实现取的是 DGuiApplicationHelper 的 applicationPalette()。本项目
-    // dde25common.cpp 里有意识地不走 DGuiApplicationHelper（见 getSystemActiveColor），
-    // 这里跟它保持一致，直接用 qApp 的调色板。
-    return qApp->palette().color(QPalette::Text);
+    // 参考实现取的是 DGuiApplicationHelper 的 applicationPalette()。本项目统一走
+    // uitheme 的正文色，好让日程块上的字跟界面其它正文同一个色（约束 1）。
+    return textColor();
 }
 
 } // namespace DDE25

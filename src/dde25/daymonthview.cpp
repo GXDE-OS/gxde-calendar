@@ -27,6 +27,7 @@
 #include "constants.h"
 #include "cweekwidget.h"
 #include "dde25common.h"
+#include "uitheme.h"
 
 #include <QApplication>
 #include <QEvent>
@@ -91,43 +92,26 @@ void CDayMonthView::setTheMe(int type)
     m_prevButton->setIcon(DDE25::navArrowIcon(false, type));
     m_nextButton->setIcon(DDE25::navArrowIcon(true, type));
     m_dayMonthWidget->setTheMe(type);
-    if (type == 0 || type == 1) {
-        QPalette aniPa = palette();
-        const QColor tbColor = "#FFFFFF";
-        aniPa.setColor(QPalette::Window, tbColor);
-        setPalette(aniPa);
-        setBackgroundRole(QPalette::Window);
-        setBColor(tbColor);
+    // 窗口底与分隔线取调色板/中性色派生，正文统一用中性色，
+    // 选中圆底与日程小圆点分别用主色与警示色（见 uitheme.h 的约束 1）
+    const QColor tbColor = DDE25::windowColor();
+    QPalette aniPa = palette();
+    aniPa.setColor(QPalette::Window, tbColor);
+    setPalette(aniPa);
+    setBackgroundRole(QPalette::Window);
+    setBColor(tbColor);
 
-        m_currentMouth->setTextColor(QColor("#3B3B3B"));
-        m_currentDay->setTextColor(todayColor);
-        m_currentWeek->setTextColor(QColor("#414D68"));
-        m_currentLuna->setTextColor(QColor("#414D68"));
-        m_currentYear->setTextColor(QColor("#414D68"));
+    m_currentMouth->setTextColor(DDE25::textColor());
+    m_currentDay->setTextColor(todayColor);
+    m_currentWeek->setTextColor(DDE25::textColor());
+    m_currentLuna->setTextColor(DDE25::textColor());
+    m_currentYear->setTextColor(DDE25::textColor());
 
-        m_backgroundCircleColor = "#0081FF";
-        m_weekendsTextColor = Qt::black;
-        m_festivalTextColor = Qt::black;
-        m_splitline->setStyleSheet("background-color: rgba(0, 0, 0, 0.1);");
-    } else if (type == 2) {
-        QPalette aniPa = palette();
-        const QColor tbColor = "#282828";
-        aniPa.setColor(QPalette::Window, tbColor);
-        setPalette(aniPa);
-        setBackgroundRole(QPalette::Window);
-        setBColor(tbColor);
-
-        m_currentMouth->setTextColor(QColor("#C0C6D4"));
-        m_currentDay->setTextColor(todayColor);
-        m_currentWeek->setTextColor(QColor("#C0C6D4"));
-        m_currentLuna->setTextColor(QColor("#C0C6D4"));
-        m_currentYear->setTextColor(QColor("#C0C6D4"));
-
-        m_backgroundCircleColor = "#0059D2";
-        m_weekendsTextColor = Qt::black;
-        m_festivalTextColor = Qt::black;
-        m_splitline->setStyleSheet("background-color: rgba(255, 255, 255, 0.1);");
-    }
+    m_backgroundCircleColor = DDE25::accentColor();
+    m_weekendsTextColor = DDE25::textColor();
+    m_festivalTextColor = DDE25::textColor();
+    m_splitline->setStyleSheet(
+        QStringLiteral("background-color: %1;").arg(DDE25::css(DDE25::borderColor())));
     update();
 }
 
@@ -147,10 +131,8 @@ void CDayMonthView::initUI()
     m_today = new QPushButton(tr("Today"), this);
     m_today->setObjectName("DayMonthViewTodayButton");
     m_today->setAccessibleName("DayMonthViewTodayButton");
-    // 参考实现固定 80×36。文案固定为英文 Today 后 80px 足够，这里仍用最小宽度，
-    // 避免不同字体下裁字（标题行有富余）。
-    m_today->setMinimumSize(80, DDEDayCalendar::D_MLabelHeight);
-    m_today->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
+    // 与月/周/年视图的 Today 同一个尺寸（见 uitheme.h 的约束 2）
+    m_today->setFixedSize(DDECalendar::TodayButtonWidth, DDECalendar::TodayButtonHeight);
     QFont todayfont;
     todayfont.setPixelSize(DDECalendar::FontSizeFourteen);
     m_today->setFont(todayfont);
@@ -160,19 +142,18 @@ void CDayMonthView::initUI()
     m_prevButton->setAccessibleName("DayMonthPrevButton");
     m_prevButton->setAutoRaise(true);
     m_prevButton->setIcon(DDE25::navArrowIcon(false, m_themetype));
-    m_prevButton->setIconSize(QSize(16, 16));
-    m_prevButton->setFixedSize(36, 36);
+    m_prevButton->setIconSize(QSize(DDE25::Metric::Icon, DDE25::Metric::Icon));
+    m_prevButton->setFixedSize(DDECalendar::NavButtonSize, DDECalendar::NavButtonSize);
 
     m_nextButton = new QToolButton(this);
     m_nextButton->setObjectName("DayMonthNextButton");
     m_nextButton->setAccessibleName("DayMonthNextButton");
     m_nextButton->setAutoRaise(true);
     m_nextButton->setIcon(DDE25::navArrowIcon(true, m_themetype));
-    m_nextButton->setIconSize(QSize(16, 16));
-    m_nextButton->setFixedSize(36, 36);
+    m_nextButton->setIconSize(QSize(DDE25::Metric::Icon, DDE25::Metric::Icon));
+    m_nextButton->setFixedSize(DDECalendar::NavButtonSize, DDECalendar::NavButtonSize);
 
     QHBoxLayout *titleLayout = new QHBoxLayout;
-    titleLayout->setContentsMargins(0, 0, 0, 0);
     titleLayout->setSpacing(0);
     titleLayout->setContentsMargins(0, 0, 10, 3);
 
@@ -191,7 +172,6 @@ void CDayMonthView::initUI()
 
     // 上半部分
     m_upLayout = new QVBoxLayout;
-    m_upLayout->setContentsMargins(0, 0, 0, 0);
     m_upLayout->setSpacing(0);
     m_upLayout->setContentsMargins(22, 9, 0, 7);
     m_upLayout->addLayout(titleLayout);
@@ -206,7 +186,6 @@ void CDayMonthView::initUI()
 
     // 中间部分
     QVBoxLayout *midLayout = new QVBoxLayout;
-    midLayout->setContentsMargins(0, 0, 0, 0);
     midLayout->setSpacing(0);
     midLayout->setContentsMargins(0, 0, 0, 20);
 
@@ -388,19 +367,13 @@ CDayMonthWidget::~CDayMonthWidget() = default;
 
 void CDayMonthWidget::setTheMe(int type)
 {
-    m_currentDayTextColor = DDE25::systemActiveColor();
-    if (type == 0 || type == 1) {
-        m_defaultTextColor = Qt::black;
-        m_selectedTextColor = Qt::white;
-        m_notCurrentTextColor = "#b2b2b2";
-        m_ceventColor = QColor(255, 93, 0);
-    } else if (type == 2) {
-        m_defaultTextColor = "#C0C6D4";
-        m_selectedTextColor = "#B8D3FF";
-        m_notCurrentTextColor = "#C0C6D4";
-        m_notCurrentTextColor.setAlphaF(0.5);
-        m_ceventColor = QColor(204, 77, 3);
-    }
+    m_currentDayTextColor = DDE25::accentColor();
+    // 正文/非当前月/选中态的文字与「有日程」的小圆点，全部取主题色派生，
+    // 不再按主题分支写字面值（见 uitheme.h 的约束 1）
+    m_defaultTextColor = DDE25::textColor();
+    m_selectedTextColor = DDE25::onAccentColor();
+    m_notCurrentTextColor = DDE25::textColor(DDE25::TextTertiary);
+    m_ceventColor = DDE25::alertColor();
     update();
 }
 
@@ -450,7 +423,7 @@ void CDayMonthWidget::paintCell(QWidget *cell)
         const qreal y = rect.y() + (rect.height() - r) / 2;
         const QRectF fillRect = QRectF(x, y, r, r).marginsRemoved(QMarginsF(1.5, 2.5, 1.5, 1.5));
         painter.save();
-        painter.setBrush(QBrush(DDE25::systemActiveColor()));
+        painter.setBrush(QBrush(DDE25::accentColor()));
         painter.setPen(Qt::NoPen);
         painter.drawEllipse(fillRect);
         painter.restore();
@@ -458,7 +431,7 @@ void CDayMonthWidget::paintCell(QWidget *cell)
             // 绘制焦点效果：在选中圆外再画一圈
             QPen pen;
             pen.setWidth(2);
-            pen.setColor(DDE25::systemActiveColor());
+            pen.setColor(DDE25::accentColor());
             painter.setPen(pen);
             const QRectF focusRect(fillRect.x() - 2, fillRect.y() - 2,
                                    fillRect.width() + 4, fillRect.height() + 4);

@@ -31,6 +31,7 @@
 #include "schedule/calendarservice.h"
 #include "schedulebodyview.h"
 #include "schedulequery.h"
+#include "uitheme.h"
 #include "weekgraphicsview.h"
 
 #include <QHBoxLayout>
@@ -57,49 +58,27 @@ CDayWindow::~CDayWindow() = default;
 void CDayWindow::setTheMe(int type)
 {
     m_themetype = type;
-    if (type == 0 || type == 1) {
-        m_leftground->setBColor("#FFFFFF");
 
-        QPalette ypa = m_YearLabel->palette();
-        QColor yearTextColor = QColor("#000000");
-        yearTextColor.setAlphaF(0.8);
-        ypa.setColor(QPalette::WindowText, yearTextColor);
-        m_YearLabel->setPalette(ypa);
-        m_YearLabel->setForegroundRole(QPalette::WindowText);
+    // 左栏底、年份、农历、节气：颜色全部从主题色派生，深浅主题只调色板的差别
+    // 由 textColor() 自己消化（见 uitheme.h 的约束 1）
+    m_leftground->setBColor(DDE25::windowColor());
 
-        QPalette lpa = m_LunarLabel->palette();
-        QColor lunarTextColor = QColor("#000000");
-        lunarTextColor.setAlphaF(0.5);
-        lpa.setColor(QPalette::WindowText, lunarTextColor);
-        m_LunarLabel->setPalette(lpa);
-        m_LunarLabel->setForegroundRole(QPalette::WindowText);
+    QPalette ypa = m_YearLabel->palette();
+    ypa.setColor(QPalette::WindowText, DDE25::textColor(DDE25::TextSecondary));
+    m_YearLabel->setPalette(ypa);
+    m_YearLabel->setForegroundRole(QPalette::WindowText);
 
-        QPalette spa = m_SolarDay->palette();
-        spa.setColor(QPalette::WindowText, Qt::red);
-        m_SolarDay->setPalette(spa);
-        m_SolarDay->setForegroundRole(QPalette::WindowText);
-    } else if (type == 2) {
-        m_leftground->setBColor("#282828");
+    QPalette lpa = m_LunarLabel->palette();
+    lpa.setColor(QPalette::WindowText, DDE25::textColor(DDE25::TextTertiary));
+    m_LunarLabel->setPalette(lpa);
+    m_LunarLabel->setForegroundRole(QPalette::WindowText);
 
-        QPalette ypa = m_YearLabel->palette();
-        QColor yearTextColor = QColor("#FFFFFF");
-        yearTextColor.setAlphaF(0.8);
-        ypa.setColor(QPalette::WindowText, yearTextColor);
-        m_YearLabel->setPalette(ypa);
-        m_YearLabel->setForegroundRole(QPalette::WindowText);
+    // 节气用警示色，不再单拎一个 Qt::red（那是第四种色相）
+    QPalette spa = m_SolarDay->palette();
+    spa.setColor(QPalette::WindowText, DDE25::alertColor());
+    m_SolarDay->setPalette(spa);
+    m_SolarDay->setForegroundRole(QPalette::WindowText);
 
-        QPalette lpa = m_LunarLabel->palette();
-        QColor lunarTextColor = QColor("#FFFFFF");
-        lunarTextColor.setAlphaF(0.5);
-        lpa.setColor(QPalette::WindowText, lunarTextColor);
-        m_LunarLabel->setPalette(lpa);
-        m_LunarLabel->setForegroundRole(QPalette::WindowText);
-
-        QPalette spa = m_SolarDay->palette();
-        spa.setColor(QPalette::WindowText, Qt::red);
-        m_SolarDay->setPalette(spa);
-        m_SolarDay->setForegroundRole(QPalette::WindowText);
-    }
     m_daymonthView->setTheMe(type);
     m_scheduleView->setTheMe(type);
 }
@@ -259,9 +238,7 @@ void CDayWindow::initUI()
     labelF.setPixelSize(DDECalendar::FontSizeTwentyfour);
     m_YearLabel->setFont(labelF);
     QPalette ypa = m_YearLabel->palette();
-    QColor yearTextColor = QColor("#000000");
-    yearTextColor.setAlphaF(0.8);
-    ypa.setColor(QPalette::WindowText, yearTextColor);
+    ypa.setColor(QPalette::WindowText, DDE25::textColor(DDE25::TextSecondary));
     m_YearLabel->setPalette(ypa);
     titleLayout->addWidget(m_YearLabel);
 
@@ -272,9 +249,7 @@ void CDayWindow::initUI()
     m_LunarLabel->setFont(labelF);
     m_LunarLabel->setAlignment(Qt::AlignCenter);
     QPalette lpa = m_LunarLabel->palette();
-    QColor lunarTextColor = QColor("#000000");
-    lunarTextColor.setAlphaF(0.5);
-    lpa.setColor(QPalette::WindowText, lunarTextColor);
+    lpa.setColor(QPalette::WindowText, DDE25::textColor(DDE25::TextTertiary));
     m_LunarLabel->setPalette(lpa);
     titleLayout->addWidget(m_LunarLabel);
 
@@ -284,7 +259,7 @@ void CDayWindow::initUI()
     m_SolarDay->setFont(labelF);
     m_SolarDay->setAlignment(Qt::AlignCenter);
     QPalette spa = m_SolarDay->palette();
-    spa.setColor(QPalette::WindowText, Qt::red);
+    spa.setColor(QPalette::WindowText, DDE25::alertColor());
     m_SolarDay->setPalette(spa);
     titleLayout->addWidget(m_SolarDay);
     titleLayout->addStretch();
@@ -324,7 +299,7 @@ void CDayWindow::initUI()
     m_leftground = new CustomFrame(this);
     m_leftground->setRoundState(true, true, true, true);
     m_leftground->setLayout(leftMainLayout);
-    m_leftground->setBColor("#FFFFFF");
+    m_leftground->setBColor(DDE25::windowColor());
 
     QHBoxLayout *mainLayout = new QHBoxLayout;
     mainLayout->setContentsMargins(0, 0, 0, 0);

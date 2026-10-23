@@ -27,6 +27,7 @@
 
 #include "constants.h"
 #include "dde25common.h"
+#include "uitheme.h"
 
 #include <DPushButton>
 
@@ -96,23 +97,9 @@ void CScheduleCtrlDlg::initConnection()
 
 void CScheduleCtrlDlg::setTheMe(const int type)
 {
-    //标题文字颜色
-    QColor titleColor;
-    //提示内容文字颜色
-    QColor contentColor;
-    if (type == 2) {
-        titleColor = "#FFFFFF";
-        titleColor.setAlphaF(0.9);
-        contentColor = "#FFFFFF";
-        contentColor.setAlphaF(0.7);
-    } else {
-        titleColor = "#000000";
-        titleColor.setAlphaF(0.9);
-        contentColor = "#000000";
-        contentColor.setAlphaF(0.7);
-    }
-    setPaletteTextColor(m_firstLabel, titleColor);
-    setPaletteTextColor(m_seconLabel, contentColor);
+    // 标题与提示内容只是正文的两个层级，取中性色派生
+    setPaletteTextColor(m_firstLabel, DDE25::textColor());
+    setPaletteTextColor(m_seconLabel, DDE25::textColor(DDE25::TextSecondary));
 }
 
 void CScheduleCtrlDlg::setPaletteTextColor(QWidget *widget, QColor textColor)

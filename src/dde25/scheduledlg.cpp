@@ -29,6 +29,7 @@
 #include "constants.h"
 #include "dde25common.h"
 #include "timeedit.h"
+#include "uitheme.h"
 
 #include <DLabel>
 
@@ -1261,13 +1262,8 @@ void CScheduleDlg::setTheMe(const int type)
     if (m_textEdit == nullptr) {
         return;
     }
-    //日程标题编辑框文字颜色
-    QColor titleColor;
-    if (type == 2) {
-        titleColor = "#C0C6D4";
-    } else {
-        titleColor = "#414D68";
-    }
+    //日程标题编辑框文字颜色：跟随主题的正文色
+    const QColor titleColor = DDE25::textColor();
     QPalette pa = m_textEdit->palette();
     //设置颜色
     pa.setColor(QPalette::Text, titleColor);

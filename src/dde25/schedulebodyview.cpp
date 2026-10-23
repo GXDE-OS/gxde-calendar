@@ -26,6 +26,7 @@
 
 #include "alldayview.h"
 #include "constants.h"
+#include "uitheme.h"
 
 #include <QApplication>
 #include <QPainter>
@@ -186,18 +187,13 @@ void CScheduleBodyView::setScheduleInfo(const QMap<QDate, DSchedule::List> &sche
 
 void CScheduleBodyView::setTheMe(int type)
 {
-    if (type == 0 || type == 1) {
-        m_dividingLineColor = QColor(0, 0, 0, 13);
-        m_ALLDayColor = "#303030";
-        m_timeColor = "#7D7D7D";
-    } else if (type == 2) {
-        m_dividingLineColor = QColor(255, 255, 255, 10);
-        m_ALLDayColor = "#7D7D7D";
-        m_timeColor = "#7D7D7D";
-    }
+    // 「全天」标签与时间刻度只是正文的两个层级，分割线取中性色派生
+    m_dividingLineColor = DDE25::borderColor();
+    m_ALLDayColor = DDE25::textColor();
+    m_timeColor = DDE25::textColor(DDE25::TextSecondary);
 
     // 外框背景色，用于遮住右侧竖线
-    m_outerBorderColor = qApp->palette().color(QPalette::Active, QPalette::Window);
+    m_outerBorderColor = DDE25::windowColor();
 
     m_graphicsView->setTheMe(type);
     m_allDayView->setTheMe(type);

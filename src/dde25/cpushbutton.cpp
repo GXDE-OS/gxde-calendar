@@ -25,6 +25,7 @@
 #include "cpushbutton.h"
 
 #include "dde25common.h"
+#include "uitheme.h"
 
 #include <QHBoxLayout>
 #include <QMouseEvent>
@@ -35,10 +36,9 @@ CPushButton::CPushButton(QWidget *parent) : QWidget(parent)
     QHBoxLayout *layoutAddType = new QHBoxLayout();
     m_textLabel = new QLabel(tr("New event type"));
 
-    m_textLabel->setFixedSize(100, 34);
+    m_textLabel->setFixedSize(200, 34);
     m_textLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
-    m_textLabel->setFixedSize(200, 34);
     layoutAddType->setSpacing(0);
     layoutAddType->setContentsMargins(0, 0, 0, 0);
     layoutAddType->setAlignment(Qt::AlignLeft);
@@ -46,18 +46,15 @@ CPushButton::CPushButton(QWidget *parent) : QWidget(parent)
     m_iconButton->setObjectName("IconButton");
     m_iconButton->setAccessibleName("IconButton");
     m_iconButton->setFocusPolicy(Qt::NoFocus);
-    m_iconButton->setFixedSize(16, 16);
-    m_iconButton->setIconSize(QSize(14, 14));
+    // 按钮框与图标同一个尺寸：图标就是按钮本身，不留第二种尺寸
+    m_iconButton->setFixedSize(DDE25::Metric::Icon, DDE25::Metric::Icon);
+    m_iconButton->setIconSize(QSize(DDE25::Metric::Icon, DDE25::Metric::Icon));
     m_iconButton->setAutoRaise(true);   //QToolButton 没有 setFlat，用 autoRaise 达到同样的平坦效果
 
     QPalette pa = m_textLabel->palette();
 
-    //设置深浅色主题下正常状态时的文本颜色，与下拉框颜色对其
-    if (DDE25::themeType() == 2) {
-        pa.setBrush(QPalette::WindowText, QColor("#FFFFFF"));
-    } else {
-        pa.setBrush(QPalette::WindowText, QColor("#000000"));
-    }
+    // 正文色随深浅主题切换，取值统一走 textColor()
+    pa.setBrush(QPalette::WindowText, DDE25::textColor());
     m_textLabel->setPalette(pa);
 
     layoutAddType->setContentsMargins(33, 0, 0, 0);
@@ -107,7 +104,7 @@ void CPushButton::paintEvent(QPaintEvent *event)
     if (m_Highlighted) {
         //背景设置为高亮色，此时图标要用白色那份
         m_iconButton->setIcon(QIcon(":/resources/icon/dde_calendar_create_dark.svg"));
-        painter.setBrush(palette().highlight());
+        painter.setBrush(DDE25::accentColor());
         m_textLabel->setBackgroundRole(QPalette::Highlight);
     } else {
         //背景透明，图标跟随深浅主题

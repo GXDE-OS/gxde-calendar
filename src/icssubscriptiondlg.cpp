@@ -18,6 +18,7 @@
 #include "icssubscriptiondlg.h"
 
 #include "dde25/dde25common.h"
+#include "dde25/uitheme.h"
 #include "importicsdlg.h"
 #include "subscribeicsdlg.h"
 
@@ -37,15 +38,21 @@ namespace {
 const int RowHeight = 68;
 const int ContentWidth = 560;
 const int ContentHeight = 300;
+// 行内三个操作按钮共用同一个尺寸：同一种元素不出现三种宽度
+// （见 dde25/uitheme.h 的约束 2）
+const int ItemButtonWidth = 96;
+const int ItemButtonHeight = 28;
 
+// 正文的几个层级统一走 uitheme 的中性色派生，不再按主题分支写黑白
 QColor dialogTextColor(int themeType, qreal alpha) {
-    QColor color = (themeType == 2) ? QColor(Qt::white) : QColor(Qt::black);
+    Q_UNUSED(themeType)
+    QColor color = DDE25::neutralColor();
     color.setAlphaF(alpha);
     return color;
 }
 
 QColor warningColor() {
-    return QColor("#F25C5C");
+    return DDE25::alertColor();
 }
 
 QString intervalText(int minutes) {
@@ -85,15 +92,15 @@ CIcsSubscriptionItem::CIcsSubscriptionItem(QWidget *parent)
     m_statusLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
 
     m_editButton = new DPushButton(tr("Edit"), this);
-    m_editButton->setFixedSize(48, 28);
+    m_editButton->setFixedSize(ItemButtonWidth, ItemButtonHeight);
     m_editButton->setFocusPolicy(Qt::NoFocus);
 
     m_refreshButton = new DPushButton(tr("Refresh"), this);
-    m_refreshButton->setFixedSize(64, 28);
+    m_refreshButton->setFixedSize(ItemButtonWidth, ItemButtonHeight);
     m_refreshButton->setFocusPolicy(Qt::NoFocus);
 
     m_removeButton = new DPushButton(tr("Unsubscribe"), this);
-    m_removeButton->setFixedSize(96, 28);
+    m_removeButton->setFixedSize(ItemButtonWidth, ItemButtonHeight);
     m_removeButton->setFocusPolicy(Qt::NoFocus);
 
     connect(m_editButton, &DPushButton::clicked, this, [this] {

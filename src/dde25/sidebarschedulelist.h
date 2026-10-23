@@ -27,6 +27,7 @@
 
 #include "schedule/dschedule.h"
 
+class QContextMenuEvent;
 class QLabel;
 class QPushButton;
 class QScrollArea;
@@ -50,12 +51,15 @@ public:
 signals:
     // 单击一行 -> 打开编辑弹窗
     void signalClicked(const DSchedule::Ptr &schedule);
+    // 右键菜单里的「删除」：从这里走，删除路径才只有 右键-删除-确认 三次点击
+    void signalDeleteClicked(const DSchedule::Ptr &schedule);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
     void enterEvent(QEnterEvent *event) override;
     void leaveEvent(QEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
+    void contextMenuEvent(QContextMenuEvent *event) override;
 
 private:
     QString timeText() const;
@@ -87,6 +91,7 @@ public:
 
 signals:
     void signalEditSchedule(const DSchedule::Ptr &schedule);
+    void signalDeleteSchedule(const DSchedule::Ptr &schedule);
     void signalCreateSchedule(const QDate &date);
 
 protected:

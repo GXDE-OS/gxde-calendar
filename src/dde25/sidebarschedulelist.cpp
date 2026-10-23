@@ -22,10 +22,13 @@
 #include "dde25common.h"
 #include "schedulecolors.h"
 #include "schedulequery.h"
+#include "uitheme.h"
 
+#include <QContextMenuEvent>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLocale>
+#include <QMenu>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPushButton>
@@ -37,40 +40,19 @@
 
 namespace {
 
-// 一行日程的高度（标题 + 时间两行）与行间距
-const int ItemHeight = 44;
+// 行间距；行高与行内文字行高取 DDE25::Metric，不在这里另立一套
 const int ItemSpacing = 2;
 // 侧栏左右留白，和迷你月历的观感对齐
 const int ListLeftRightMargin = 10;
-// 左侧类型色条的宽度与上下缩进（月视图的日程块也是 4px 竖条）
-const int ColorBarWidth = 4;
-
-// 新建日程按钮的样式，与标题栏的 NewScheduleButton 保持一致
-QString addButtonStyleSheet()
-{
-    return QStringLiteral(
-        "QPushButton {"
-        "  background-color: white;"
-        "  border: 1px solid rgba(0, 0, 0, 0.1);"
-        "  border-radius: 4px;"
-        "}"
-        "QPushButton:hover {"
-        "  background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
-        "    stop:0 #8CCFFF, stop:1 #4BB8FF);"
-        "  border: 1px solid #3caafd;"
-        "}"
-        "QPushButton:pressed {"
-        "  background-color: #2ca7f8;"
-        "  border: 1px solid #1088ff;"
-        "}");
-}
+// 左侧类型色条的宽度（月视图的日程块也是同宽竖条）
+const int ColorBarWidth = DDE25::Metric::ColorBar;
 
 } // namespace
 
 SidebarScheduleItem::SidebarScheduleItem(QWidget *parent)
     : QWidget(parent)
 {
-    setFixedHeight(ItemHeight);
+    setFixedHeight(DDE25::Metric::ScheduleRowHeight);
     setCursor(Qt::PointingHandCursor);
     // 行上没有子控件，鼠标移进移出要靠 enterEvent/leaveEvent 自己重绘
     setAttribute(Qt::WA_Hover, true);
@@ -86,7 +68,7 @@ void SidebarScheduleItem::setData(const DSchedule::Ptr &schedule)
     if (!color.isValid() && !schedule.isNull()) {
         color = DDE25::scheduleColorByType(schedule->scheduleTypeID()).orginalColor;
     }
-    m_color = color.isValid() ? color : QColor("#2ca7f8");
+    m_color = color.isValid() ? color : DDE25::accentColor();
 
     update();
 }
@@ -121,12 +103,11 @@ void SidebarScheduleItem::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    const bool dark = DDE25::themeType() == 2;
-
     if (m_hover) {
         painter.setPen(Qt::NoPen);
-        painter.setBrush(dark ? QColor(255, 255, 255, 30) : QColor(0, 0, 0, 14));
-        painter.drawRoundedRect(rect(), 6, 6);
+        painter.setBrush(DDE25::hoverColor());
+        painter.drawRoundedRect(rect(), DDE25::Metric::RadiusItem,
+                                DDE25::Metric::RadiusItem);
     }
 
     // 左侧类型色条：与月视图日程块一样画在行首
@@ -134,12 +115,14 @@ void SidebarScheduleItem::paintEvent(QPaintEvent *event)
     painter.setBrush(m_color);
     painter.drawRoundedRect(QRectF(0, 8, ColorBarWidth, height() - 16), 2, 2);
 
-    QColor titleColor = dark ? QColor("#C0C6D4") : QColor("#414D68");
-    QColor timeColor = titleColor;
-    timeColor.setAlphaF(0.6);
+    const QColor titleColor = DDE25::textColor();
+    const QColor timeColor = DDE25::textColor(DDE25::TextSecondary);
 
     const int textLeft = ColorBarWidth + 8;
     const int textWidth = width() - textLeft - 6;
+    // 两行文字共用同一个行高，上下留白对称：整行只有这一个行高值
+    const int lineH = DDE25::Metric::ScheduleRowLine;
+    const int topPad = (DDE25::Metric::ScheduleRowHeight - lineH * 2) / 2;
 
     QFont font = painter.font();
 
@@ -147,16 +130,39 @@ void SidebarScheduleItem::paintEvent(QPaintEvent *event)
     painter.setFont(font);
     painter.setPen(titleColor);
     const QString title = m_schedule.isNull() ? QString() : m_schedule->summary();
-    painter.drawText(QRect(textLeft, 5, textWidth, 18),
+    painter.drawText(QRect(textLeft, topPad, textWidth, lineH),
                      Qt::AlignLeft | Qt::AlignVCenter,
                      painter.fontMetrics().elidedText(title, Qt::ElideRight, textWidth));
 
     font.setPixelSize(11);
     painter.setFont(font);
     painter.setPen(timeColor);
-    painter.drawText(QRect(textLeft, 23, textWidth, 16),
+    painter.drawText(QRect(textLeft, topPad + lineH, textWidth, lineH),
                      Qt::AlignLeft | Qt::AlignVCenter,
                      painter.fontMetrics().elidedText(timeText(), Qt::ElideRight, textWidth));
+}
+
+void SidebarScheduleItem::contextMenuEvent(QContextMenuEvent *event)
+{
+    if (m_schedule.isNull()) {
+        return;
+    }
+
+    QMenu menu(this);
+    QAction *edit = menu.addAction(tr("Edit"));
+    QAction *remove = menu.addAction(tr("Delete"));
+    QAction *chosen = menu.exec(event->globalPos());
+    if (chosen == nullptr) {
+        return;
+    }
+
+    if (chosen == remove) {
+        emit signalDeleteClicked(m_schedule);
+        return;
+    }
+    if (chosen == edit) {
+        emit signalClicked(m_schedule);
+    }
 }
 
 void SidebarScheduleItem::enterEvent(QEnterEvent *event)
@@ -191,18 +197,20 @@ SidebarScheduleList::SidebarScheduleList(QWidget *parent)
     QFont font = m_dateLabel->font();
     font.setPixelSize(12);
     m_dateLabel->setFont(font);
-    m_dateLabel->setStyleSheet("QLabel { color: rgba(0, 0, 0, 0.8); }");
+    m_dateLabel->setStyleSheet(
+        QStringLiteral("QLabel { color: %1; }").arg(DDE25::css(DDE25::textColor())));
 
     m_addButton = new QPushButton(this);
     m_addButton->setIcon(QIcon(DDE25::themeType() == 2
                                    ? ":/resources/icon/dde_calendar_create_dark.svg"
                                    : ":/resources/icon/dde_calendar_create_light.svg"));
-    m_addButton->setIconSize(QSize(16, 16));
-    m_addButton->setFixedSize(24, 24);
+    m_addButton->setIconSize(QSize(DDE25::Metric::Icon, DDE25::Metric::Icon));
+    m_addButton->setFixedSize(DDE25::Metric::ToolButton, DDE25::Metric::ToolButton);
     m_addButton->setToolTip(tr("New Schedule"));
     m_addButton->setFocusPolicy(Qt::NoFocus);
     m_addButton->setCursor(Qt::PointingHandCursor);
-    m_addButton->setStyleSheet(addButtonStyleSheet());
+    // 与标题栏两个图标按钮同一份样式（见 uitheme.h）
+    m_addButton->setStyleSheet(DDE25::toolButtonStyleSheet());
     connect(m_addButton, &QPushButton::clicked, this, [this] {
         if (m_date.isValid()) {
             emit signalCreateSchedule(m_date);
@@ -218,7 +226,9 @@ SidebarScheduleList::SidebarScheduleList(QWidget *parent)
 
     m_emptyLabel = new QLabel(tr("No Schedule"));
     m_emptyLabel->setAlignment(Qt::AlignCenter);
-    m_emptyLabel->setStyleSheet("QLabel { color: rgba(0, 0, 0, 0.4); }");
+    m_emptyLabel->setStyleSheet(
+        QStringLiteral("QLabel { color: %1; }")
+            .arg(DDE25::css(DDE25::textColor(DDE25::TextTertiary))));
 
     m_itemContainer = new QWidget;
     m_itemContainer->setAutoFillBackground(false);
@@ -322,6 +332,8 @@ void SidebarScheduleList::rebuild()
         item->setData(schedule);
         connect(item, &SidebarScheduleItem::signalClicked,
                 this, &SidebarScheduleList::signalEditSchedule);
+        connect(item, &SidebarScheduleItem::signalDeleteClicked,
+                this, &SidebarScheduleList::signalDeleteSchedule);
         m_itemLayout->insertWidget(insertAt + offset, item);
         m_items.append(item);
         ++offset;

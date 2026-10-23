@@ -27,6 +27,7 @@
 
 #include "constants.h"
 #include "dde25common.h"
+#include "uitheme.h"
 
 #include <QLocale>
 #include <QPainter>
@@ -57,12 +58,8 @@ void CMonthWeekView::setFirstDay(const Qt::DayOfWeek weekday)
 
 void CMonthWeekView::setTheMe(int type)
 {
-    if (type == 0 || type == 1) {
-        m_backgroundColor = "#E6EEF2";
-    } else if (type == 2) {
-        m_backgroundColor = "#82AEC1";
-        m_backgroundColor.setAlphaF(0.10);
-    }
+    // 星期条底色取中性色派生，深浅主题同一套写法
+    m_backgroundColor = DDE25::hoverColor();
     for (WeekRect *weekRect : m_weekRect) {
         weekRect->setTheMe(type);
     }

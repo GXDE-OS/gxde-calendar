@@ -31,6 +31,7 @@
 #include "schedulecoormanage.h"
 #include "scheduleitem.h"
 #include "schedulelayout.h"
+#include "uitheme.h"
 
 #include "schedule/calendarservice.h"
 
@@ -146,15 +147,9 @@ void CWeekGraphicsView::setSceneRect(qreal x, qreal y, qreal w, qreal h)
 
 void CWeekGraphicsView::setTheMe(int type)
 {
-    if (type == 0 || type == 1) {
-        m_weekColor = "#00429A";
-        m_weekColor.setAlphaF(0.05);
-        m_gridLineColor = QColor(0, 0, 0, 13);
-    } else if (type == 2) {
-        m_weekColor = "#4F9BFF";
-        m_weekColor.setAlphaF(0.1);
-        m_gridLineColor = QColor(255, 255, 255, 10);
-    }
+    // 周末列底色与网格线：中性色派生，不再按主题分支写两套蓝
+    m_weekColor = DDE25::hoverColor();
+    m_gridLineColor = DDE25::borderColor();
     m_LRPen.setColor(m_gridLineColor);
 
     for (CWeekDayBackgroundItem *item : m_backgroundItem) {
@@ -162,7 +157,7 @@ void CWeekGraphicsView::setTheMe(int type)
     }
 
     // 外框背景色，用于遮住右侧竖线（跟随深浅色主题）
-    m_outerBorderColor = qApp->palette().color(QPalette::Active, QPalette::Window);
+    m_outerBorderColor = DDE25::windowColor();
 
     viewport()->update();
 }

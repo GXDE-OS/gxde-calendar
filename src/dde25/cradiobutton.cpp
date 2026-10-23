@@ -25,6 +25,7 @@
 #include "cradiobutton.h"
 
 #include "dde25common.h"
+#include "uitheme.h"
 
 #include <QPainter>
 #include <QPainterPath>
@@ -53,30 +54,17 @@ void CRadioButton::paintEvent(QPaintEvent *event)
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setPen(Qt::NoPen);
 
-    int w = width();
-    int h = height();
+    const int w = width();
+    const int h = height();
 
-    if (!isChecked()) {
-        // 未选中：填自己的颜色，外圈叠一个 10% 透明的黑环当作描边
-        painter.setBrush(m_color);
-        painter.drawEllipse(QPointF(w / 2, h / 2), w / 2 - 1, h / 2 - 1);
+    // 外环：未选中是中性色描边，选中是主色。两种状态共用同一套环宽与内圈半径
+    // （环 2px、内圈 w/2-2），同一个元素上不出现两套尺寸。
+    QPainterPath ring;
+    ring.addEllipse(0, 0, w, h);
+    ring.addEllipse(2, 2, w - 4, h - 4);
+    painter.setBrush(isChecked() ? DDE25::accentColor() : DDE25::borderColor());
+    painter.drawPath(ring);
 
-        QPainterPath path;
-        path.addEllipse(0, 0, w, h);
-        path.addEllipse(2, 2, w - 4, h - 4);
-        QColor c = QColor("#000000");
-        c.setAlphaF(0.1);
-        painter.setBrush(c);
-        painter.drawPath(path);
-    } else {
-        // 选中：外环用系统活动色，内圈留 3px 空隙再填自己的颜色
-        QPainterPath path;
-        path.addEllipse(0, 0, w, h);
-        path.addEllipse(2, 2, w - 4, h - 4);
-        painter.setBrush(DDE25::systemActiveColor());
-        painter.drawPath(path);
-
-        painter.setBrush(m_color);
-        painter.drawEllipse(QPointF(w / 2, h / 2), w / 2 - 3, h / 2 - 3);
-    }
+    painter.setBrush(m_color);
+    painter.drawEllipse(QPointF(w / 2, h / 2), w / 2 - 2, h / 2 - 2);
 }

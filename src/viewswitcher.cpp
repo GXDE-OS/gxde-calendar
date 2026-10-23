@@ -17,6 +17,8 @@
 
 #include "viewswitcher.h"
 
+#include "dde25/uitheme.h"
+
 #include <QButtonGroup>
 #include <QHBoxLayout>
 #include <QPushButton>
@@ -25,26 +27,8 @@ ViewSwitcher::ViewSwitcher(QWidget *parent)
     : QWidget(parent) {
     setObjectName("ViewSwitcher");
     setAttribute(Qt::WA_StyledBackground, true);
-    setStyleSheet(
-        "QWidget#ViewSwitcher {"
-        "  background-color: white;"
-        "  border: 1px solid rgba(0, 0, 0, 0.1);"
-        "  border-radius: 4px;"
-        "}"
-        "QWidget#ViewSwitcher QPushButton {"
-        "  background-color: transparent;"
-        "  border: none;"
-        "  color: #000000;"
-        "  padding: 0px 6px;"
-        "  border-radius: 3px;"
-        "}"
-        "QWidget#ViewSwitcher QPushButton:hover {"
-        "  background-color: rgba(0, 0, 0, 0.05);"
-        "}"
-        "QWidget#ViewSwitcher QPushButton:checked {"
-        "  background-color: #2ca7f8;"
-        "  color: white;"
-        "}");
+    // 容器与分段共用同一个圆角，配色只从主题色派生（见 uitheme.h 的约束 1、2）
+    setStyleSheet(DDE25::segmentedStyleSheet(QStringLiteral("ViewSwitcher")));
 
     QHBoxLayout *layout = new QHBoxLayout(this);
     layout->setContentsMargins(1, 1, 1, 1);

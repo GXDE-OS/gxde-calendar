@@ -47,6 +47,13 @@ namespace DDECalendar {
     static const int FontSizeTwentyfour = 24;
     static const int FontSizeTen = 10;
     static const int FontSizeOneHundred = 100;
+
+    // Today 按钮与翻页按钮：年/月/周/日四个视图共用同一套尺寸。
+    // 同一个元素（Today）在四个视图里出现四种宽度属于「同一元素两种尺寸」，
+    // 见 dde25/uitheme.h 的约束 2。
+    static const int TodayButtonWidth = 88;
+    static const int TodayButtonHeight = 36;
+    static const int NavButtonSize = 36;
 }
 
 namespace DDEMonthCalendar {
@@ -82,8 +89,8 @@ namespace DDEMonthCalendar {
     static const int M_YLunaLabelWindth = 66;
     static const int M_YLunaLabelHeight = 20;
 
-    static const int MTodayWindth = 100;
-    static const int MTodayHeight = 36;
+    // Today 按钮尺寸已统一到 DDECalendar::TodayButtonWidth / TodayButtonHeight，
+    // 这里不再保留月/周各自的常量，免得又冒出第二种尺寸。
 }
 
 namespace DDEWeekCalendar {
@@ -104,8 +111,6 @@ namespace DDEWeekCalendar {
     static const int W_YLunatLabelWindth = 66;
     static const int W_YLunatLabelHeight = 20;
 
-    static const int WTodayWindth = 100;
-    static const int WTodayHeight = 36;
 }
 
 namespace DDEDayCalendar {

@@ -25,6 +25,7 @@
 #include "calendarviews.h"
 #include "viewswitcher.h"
 #include "dde25/dde25common.h"
+#include "dde25/uitheme.h"
 #include "dde25/monthwindow.h"
 #include "dde25/daywindow.h"
 #include "dde25/weekwindow.h"
@@ -32,6 +33,7 @@
 #include "dde25/schedulectrldlg.h"
 #include "dde25/sidebarschedulelist.h"
 #include "icssubscriptiondlg.h"
+#include "importicsdlg.h"
 #include "schedule/calendarservice.h"
 
 #include <QDate>
@@ -59,7 +61,6 @@ static const int ContentLeftRightPadding = 80;
 
 static const int SidebarWidth = 220;
 static const int ViewSwitcherWidth = 160;
-static const int ViewSwitcherHeight = 24;
 static const int Dde25SidePadding = 16;
 
 static const int MinYearValue = 1900;
@@ -178,10 +179,11 @@ void CalendarWindow::initUI()
     m_sidebarCalendar->setObjectName("SidebarCalendarWidget");
     m_sidebarCalendar->setAttribute(Qt::WA_StyledBackground, true);
     m_sidebarCalendar->setStyleSheet(
-        "QWidget#SidebarCalendarWidget {"
-        "  background-color: #67f9f9fa;"
-        "  border: none;"
-        "}");
+        QStringLiteral("QWidget#SidebarCalendarWidget {"
+                       "  background-color: %1;"
+                       "  border: none;"
+                       "}")
+            .arg(DDE25::css(DDE25::panelColor())));
 
     m_animationContainer = new QFrame(m_contentBackground);
     m_animationContainer->setStyleSheet("QFrame { background: rgba(0, 0, 0, 0) }");
@@ -201,7 +203,8 @@ void CalendarWindow::initUI()
     m_viewSwitcher = new ViewSwitcher;
     m_viewSwitcher->setLabels(QStringList() << tr("Y") << tr("M") << tr("W")
         << tr("D"));
-    m_viewSwitcher->setFixedSize(ViewSwitcherWidth, ViewSwitcherHeight);
+    // 与两侧的图标按钮同高：标题栏上只有这一个高度值（见 uitheme.h 的约束 2）
+    m_viewSwitcher->setFixedSize(ViewSwitcherWidth, DDE25::Metric::ToolbarHeight);
 
     // 侧边栏折叠按钮，样式对齐 gxde-file-manager 标题栏按钮
     // （白底 + 1px rgba 边框 + 4px 圆角 + 蓝色渐变 hover）
@@ -213,25 +216,13 @@ void CalendarWindow::initUI()
     sidebarIcon.addFile(":/resources/icon/sidebar.svg", QSize(16, 16), QIcon::Normal);
     sidebarIcon.addFile(":/resources/icon/sidebar_dark.svg", QSize(16, 16), QIcon::Active);
     m_sidebarToggleButton->setIcon(sidebarIcon);
-    m_sidebarToggleButton->setIconSize(QSize(16, 16));
-    m_sidebarToggleButton->setFixedSize(24, 24);
+    m_sidebarToggleButton->setIconSize(QSize(DDE25::Metric::Icon, DDE25::Metric::Icon));
+    m_sidebarToggleButton->setFixedSize(DDE25::Metric::ToolButton, DDE25::Metric::ToolButton);
     m_sidebarToggleButton->setFocusPolicy(Qt::NoFocus);
     m_sidebarToggleButton->setCursor(Qt::PointingHandCursor);
+    // 与「新建日程」、侧栏列表的「+」共用同一份样式（见 uitheme.h）
     m_sidebarToggleButton->setStyleSheet(
-        "QPushButton#SidebarToggleButton {"
-        "  background-color: white;"
-        "  border: 1px solid rgba(0, 0, 0, 0.1);"
-        "  border-radius: 4px;"
-        "}"
-        "QPushButton#SidebarToggleButton:hover {"
-        "  background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
-        "    stop:0 #8CCFFF, stop:1 #4BB8FF);"
-        "  border: 1px solid #3caafd;"
-        "}"
-        "QPushButton#SidebarToggleButton:pressed {"
-        "  background-color: #2ca7f8;"
-        "  border: 1px solid #1088ff;"
-        "}");
+        DDE25::toolButtonStyleSheet(QStringLiteral("SidebarToggleButton")));
     connect(m_sidebarToggleButton, &QPushButton::clicked, this, [this](bool) {
         setSidebarCollapsed(!m_sidebarCollapsed);
     });
@@ -245,26 +236,13 @@ void CalendarWindow::initUI()
     m_newScheduleButton->setIcon(QIcon(DDE25::themeType() == 2
                                            ? ":/resources/icon/dde_calendar_create_dark.svg"
                                            : ":/resources/icon/dde_calendar_create_light.svg"));
-    m_newScheduleButton->setIconSize(QSize(16, 16));
-    m_newScheduleButton->setFixedSize(24, 24);
+    m_newScheduleButton->setIconSize(QSize(DDE25::Metric::Icon, DDE25::Metric::Icon));
+    m_newScheduleButton->setFixedSize(DDE25::Metric::ToolButton, DDE25::Metric::ToolButton);
     m_newScheduleButton->setToolTip(tr("New Schedule"));
     m_newScheduleButton->setFocusPolicy(Qt::NoFocus);
     m_newScheduleButton->setCursor(Qt::PointingHandCursor);
     m_newScheduleButton->setStyleSheet(
-        "QPushButton#NewScheduleButton {"
-        "  background-color: white;"
-        "  border: 1px solid rgba(0, 0, 0, 0.1);"
-        "  border-radius: 4px;"
-        "}"
-        "QPushButton#NewScheduleButton:hover {"
-        "  background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
-        "    stop:0 #8CCFFF, stop:1 #4BB8FF);"
-        "  border: 1px solid #3caafd;"
-        "}"
-        "QPushButton#NewScheduleButton:pressed {"
-        "  background-color: #2ca7f8;"
-        "  border: 1px solid #1088ff;"
-        "}");
+        DDE25::toolButtonStyleSheet(QStringLiteral("NewScheduleButton")));
     // 没有点具体位置时，就以当前选中日期 + 当前时刻（弹窗里会向上取整到
     // 15 分钟）作为新建日程的默认时间
     connect(m_newScheduleButton, &QPushButton::clicked, this, [this](bool) {
@@ -340,10 +318,11 @@ void CalendarWindow::initUI()
     m_sidebarContainer->setObjectName("SidebarContainer");
     m_sidebarContainer->setAttribute(Qt::WA_StyledBackground, true);
     m_sidebarContainer->setStyleSheet(
-        "QWidget#SidebarContainer {"
-        "  background-color: #67f9f9fa;"
-        "  border: none;"
-        "}");
+        QStringLiteral("QWidget#SidebarContainer {"
+                       "  background-color: %1;"
+                       "  border: none;"
+                       "}")
+            .arg(DDE25::css(DDE25::panelColor())));
     m_sidebarContainer->setFixedWidth(SidebarWidth);
 
     QVBoxLayout *sidebarLayout = new QVBoxLayout(m_sidebarContainer);
@@ -477,6 +456,9 @@ void CalendarWindow::initUI()
             m_sidebarScheduleList, &SidebarScheduleList::refresh);
     connect(m_sidebarScheduleList, &SidebarScheduleList::signalEditSchedule,
             this, &CalendarWindow::slotEditSchedule);
+    // 侧栏右键「删除」：右键(1) -> 删除(2) -> 确认(3)，不再需要先开编辑弹窗
+    connect(m_sidebarScheduleList, &SidebarScheduleList::signalDeleteSchedule,
+            this, &CalendarWindow::slotDeleteSchedule);
     // 列表上的「+」按当前日期新建，时刻取当前时间（弹窗里会向上取整到 15 分钟）
     connect(m_sidebarScheduleList, &SidebarScheduleList::signalCreateSchedule, this,
             [this](const QDate &date) {
@@ -583,6 +565,11 @@ void CalendarWindow::menuItemInvoked(QAction *action)
 
     if (action == m_icsAction) {
         slotManageIcsSubscription();
+        return;
+    }
+
+    if (action == m_importIcsAction) {
+        slotImportIcsFile();
         return;
     }
 
@@ -1008,6 +995,26 @@ void CalendarWindow::repositionIcsAction() {
 void CalendarWindow::slotManageIcsSubscription() {
     CIcsSubscriptionDlg dlg(this);
     dlg.exec();
+}
+
+void CalendarWindow::slotImportIcsFile() {
+    CImportIcsDlg dlg(this);
+    if (dlg.exec() != DDialog::Accepted) {
+        return;
+    }
+
+    DDialog prompt(this);
+    prompt.addButton(tr("OK", "button"), true, DDialog::ButtonNormal);
+    if (dlg.importSucceeded()) {
+        prompt.setMessage(tr("Imported %1 events into \"%2\"")
+                              .arg(dlg.eventCount())
+                              .arg(dlg.targetName()));
+    } else {
+        prompt.setIcon(QIcon::fromTheme("dialog-warning"), QSize(32, 32));
+        prompt.setMessage(dlg.importError().isEmpty() ? tr("Failed to import the file")
+                                                      : dlg.importError());
+    }
+    prompt.exec();
 }
 
 void CalendarWindow::updateTime() const

@@ -33,6 +33,7 @@
 #include "weekgraphicsview.h"
 #include "weekheadview.h"
 #include "weeknumview.h"
+#include "uitheme.h"
 
 #include <QHBoxLayout>
 #include <QKeyEvent>
@@ -55,7 +56,7 @@ CWeekWindow::CWeekWindow(QWidget *parent)
     m_today = new QPushButton(tr("Today"), this);
     m_today->setObjectName("WeekWindowTodayButton");
     m_today->setAccessibleName("WeekWindowTodayButton");
-    m_today->setFixedSize(DDEWeekCalendar::WTodayWindth, DDEWeekCalendar::WTodayHeight);
+    m_today->setFixedSize(DDECalendar::TodayButtonWidth, DDECalendar::TodayButtonHeight);
     QFont todayfont;
     todayfont.setWeight(QFont::Medium);
     todayfont.setPixelSize(DDECalendar::FontSizeFourteen);
@@ -244,32 +245,21 @@ void CWeekWindow::setTheMe(int type)
 {
     m_themetype = type;
 
-    QColor yearTextColor = type == 2 ? QColor("#FFFFFF") : QColor("#000000");
-    yearTextColor.setAlphaF(0.8);
-    QColor lunarTextColor = type == 2 ? QColor("#FFFFFF") : QColor("#000000");
-    lunarTextColor.setAlphaF(0.5);
-
+    // 年份 / 农历年 / Week 只是正文的三个层级，配色全从主题色派生
     QPalette pa = m_yearLabel->palette();
-    pa.setColor(QPalette::WindowText, yearTextColor);
+    pa.setColor(QPalette::WindowText, DDE25::textColor(DDE25::TextSecondary));
     m_yearLabel->setPalette(pa);
 
     QPalette lunaPa = m_yearLunarLabel->palette();
-    lunaPa.setColor(QPalette::WindowText, lunarTextColor);
+    lunaPa.setColor(QPalette::WindowText, DDE25::textColor(DDE25::TextTertiary));
     m_yearLunarLabel->setPalette(lunaPa);
 
     QPalette wpa = m_weekLabel->palette();
-    wpa.setColor(QPalette::WindowText, QColor("#717171"));
+    wpa.setColor(QPalette::WindowText, DDE25::textColor(DDE25::TextSecondary));
     m_weekLabel->setPalette(wpa);
 
-    if (type == 2) {
-        QColor bColor = "#FFFFFF";
-        bColor.setAlphaF(0.05);
-        m_todayframe->setBColor(bColor);
-        m_todayframe->setBorderColor(QColor(0, 0, 0, 0));
-    } else {
-        m_todayframe->setBColor(Qt::white);
-        m_todayframe->setBorderColor(QColor(0, 0, 0, 0x1e));
-    }
+    m_todayframe->setBColor(DDE25::panelColor());
+    m_todayframe->setBorderColor(DDE25::borderColor());
 
     m_weekview->setTheMe(type);
     m_weekHeadView->setTheMe(type);

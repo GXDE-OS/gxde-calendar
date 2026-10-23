@@ -26,6 +26,7 @@
 #include "cmonthdayitem.h"
 
 #include "constants.h"
+#include "uitheme.h"
 
 #include <QFontMetrics>
 #include <QIcon>
@@ -63,35 +64,20 @@ void CMonthDayItem::setTheMe(int type)
 {
     m_themetype = type;
 
-    if (type == 0 || type == 1) {
-        m_dayNumColor = QColor(0, 0, 0, 204);
-        m_dayNumCurrentColor = "#FFFFFF";
+    // 日期数字、今日、农历：全部从主题色派生
+    m_dayNumColor = DDE25::textColor();
+    m_dayNumCurrentColor = DDE25::onAccentColor();
+    m_LunerColor = DDE25::textColor(DDE25::TextTertiary);
+    m_fillColor = DDE25::panelColor();
 
-        m_LunerColor = QColor(0, 0, 0, 102);
+    // 班/休两个标记只用主题色里的警示色与主色，不另引入红绿两种色相
+    // （见 uitheme.h 的约束 1）
+    m_banColor = DDE25::alertColor();
+    m_banColor.setAlphaF(0.1);
+    m_xiuColor = DDE25::accentColor();
+    m_xiuColor.setAlphaF(0.1);
 
-        m_fillColor = Qt::white;
-        m_banColor = "#FF7171";
-        m_banColor.setAlphaF(0.1);
-        m_xiuColor = "#ADFF71";
-        m_xiuColor.setAlphaF(0.1);
-
-        m_BorderColor = "#000000";
-        m_BorderColor.setAlphaF(0.05);
-    } else if (type == 2) {
-        m_dayNumColor = QColor(255, 255, 255, 204);
-        m_dayNumCurrentColor = "#B8D3FF";
-
-        m_LunerColor = QColor(255, 255, 255, 102);
-
-        m_fillColor = "#000000";
-        m_fillColor.setAlphaF(0.05);
-        m_banColor = "#FF7171";
-        m_banColor.setAlphaF(0.1);
-        m_xiuColor = "#ADFF71";
-        m_xiuColor.setAlphaF(0.1);
-
-        m_BorderColor = QColor(255, 255, 255, 13);
-    }
+    m_BorderColor = DDE25::borderColor();
     update();
 }
 

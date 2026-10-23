@@ -69,6 +69,9 @@ public slots:
     void slotDeleteSchedule(const DSchedule::Ptr &schedule);
     // 订阅在线日历的管理弹窗（标题栏菜单，在「设置窗口背景」下方）
     void slotManageIcsSubscription();
+    // 直接从菜单导入本地 .ics 文件：原先要先进「管理在线日历」再点「从文件导入」，
+    // 多一层弹窗就多一次点击，违反「3 次点击内可达」
+    void slotImportIcsFile();
 
 protected:
     void showEvent(QShowEvent *event) override;
@@ -154,6 +157,8 @@ private:
     // 「管理在线日历」：DTK 的内置菜单项在 showEvent 里才追加，位置见 setupMenu()
     QAction *m_icsAction = nullptr;
     bool m_icsActionRepositioned = false;
+    // 「导入日历文件」：直接开导入弹窗，不用先绕进「管理在线日历」
+    QAction *m_importIcsAction = nullptr;
 
     QSettings *m_settings;
     QSettings *m_dateSettings;

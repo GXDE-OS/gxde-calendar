@@ -25,6 +25,8 @@
 
 #include "cweekdaybackgrounditem.h"
 
+#include "uitheme.h"
+
 #include <QMarginsF>
 #include <QPainter>
 #include <QStyleOptionGraphicsItem>
@@ -38,15 +40,9 @@ CWeekDayBackgroundItem::CWeekDayBackgroundItem(QGraphicsItem *parent)
 
 void CWeekDayBackgroundItem::setTheMe(int type)
 {
-    if (type == 0 || type == 1) {
-        m_weekColor = "#00429A";
-        m_weekColor.setAlphaF(0.05);
-        m_dividingLineColor = QColor(0, 0, 0, 13);
-    } else {
-        m_weekColor = "#4F9BFF";
-        m_weekColor.setAlphaF(0.1);
-        m_dividingLineColor = QColor(255, 255, 255, 10);
-    }
+    // 周末列底色与分割线：中性色派生（见 uitheme.h 的约束 1）
+    m_weekColor = DDE25::hoverColor();
+    m_dividingLineColor = DDE25::borderColor();
 }
 
 void CWeekDayBackgroundItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)

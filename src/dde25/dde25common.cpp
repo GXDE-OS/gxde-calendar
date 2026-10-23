@@ -28,6 +28,8 @@
 #include <QDBusReply>
 #include <QPalette>
 
+#include "uitheme.h"
+
 namespace DDE25 {
 
 int themeType()
@@ -39,7 +41,9 @@ int themeType()
 
 QColor systemActiveColor()
 {
-    return qApp->palette().color(QPalette::Highlight);
+    // 选中/今日/高亮一律用主色，不跟随系统的 Highlight —— 否则系统高亮色一旦
+    // 被用户改掉，界面上就会多出第四种主题色（见 uitheme.h 的约束 1）。
+    return accentColor();
 }
 
 QIcon navArrowIcon(bool next, int type) {

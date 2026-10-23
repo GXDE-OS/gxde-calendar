@@ -20,6 +20,8 @@
 #include "infoview.h"
 #include "spinner.h"
 
+#include "dde25/uitheme.h"
+
 #include <QDebug>
 #include <QLabel>
 #include <QHBoxLayout>
@@ -40,23 +42,29 @@ InfoView::InfoView(QFrame *parent) :
     font.setPixelSize(30);
     m_timeLabel->setFont(font);
 
-    m_festivalLabel->setStyleSheet("font-size: 14px; color: #303030");
-    m_sentenseLabel->setStyleSheet("font-size: 14px; color: #303030");
+    // 节假日/一句话用正文色，「Today」链接用主色：颜色统一取自主题色
+    // （见 dde25/uitheme.h 的约束 1）
+    m_festivalLabel->setStyleSheet(
+        QStringLiteral("font-size: 14px; color: %1;").arg(DDE25::css(DDE25::textColor())));
+    m_sentenseLabel->setStyleSheet(
+        QStringLiteral("font-size: 14px; color: %1;").arg(DDE25::css(DDE25::textColor())));
 
     m_todayButton->setText(tr("Today"));
-    m_todayButton->setStyleSheet("Dtk--Widget--DLinkButton {"
-                                 "background-color:transparent;"
-                                 "border:none;"
-                                 "color:#0082fa;"
-                                 "}"
-
-                                 "Dtk--Widget--DLinkButton:hover {"
-                                 "color:#16b8ff;"
-                                 "}"
-
-                                 "Dtk--Widget--DLinkButton:pressed {"
-                                 "color:#0060b9;"
-                                 "}");
+    m_todayButton->setStyleSheet(
+        QStringLiteral("Dtk--Widget--DLinkButton {"
+                       "background-color:transparent;"
+                       "border:none;"
+                       "color:%1;"
+                       "}"
+                       "Dtk--Widget--DLinkButton:hover {"
+                       "color:%2;"
+                       "}"
+                       "Dtk--Widget--DLinkButton:pressed {"
+                       "color:%3;"
+                       "}")
+            .arg(DDE25::css(DDE25::accentColor()),
+                 DDE25::css(DDE25::hoverAccentColor()),
+                 DDE25::css(DDE25::pressedAccentColor())));
 
     QHBoxLayout * mainLayout = new QHBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);

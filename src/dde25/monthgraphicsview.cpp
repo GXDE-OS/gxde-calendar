@@ -31,6 +31,7 @@
 #include "cmonthscheduleitem.h"
 #include "cmonthschedulenumitem.h"
 #include "schedulelayout.h"
+#include "uitheme.h"
 
 #include "schedule/calendarservice.h"
 
@@ -237,11 +238,9 @@ void CMonthGraphicsview::updateScheduleItems()
         if (block.isMore) {
             CMonthScheduleNumItem *numItem = new CMonthScheduleNumItem();
             // 背景透明、文字用中性灰，跟参考实现一致
-            QColor gradient("#000000");
-            gradient.setAlphaF(0.00);
+            const QColor gradient = DDE25::hoverColor();
             numItem->setColor(gradient, gradient);
-            QColor textColor(DDE25::themeType() == 2 ? "#FFFFFF" : "#5E5E5E");
-            textColor.setAlphaF(0.9);
+            const QColor textColor = DDE25::textColor();
             numItem->setText(textColor, font());
             numItem->setData(block.moreCount);
             numItem->setRect(block.rect);

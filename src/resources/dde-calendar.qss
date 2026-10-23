@@ -1,14 +1,19 @@
+/*
+ * 本文件已不再被加载：QSS 是静态文本，没法在里面调用主题函数，
+ * 启动时改由 main.cpp 的 GetStyleSheetContent() 按 DDE25 的三个主题色现拼
+ * （见 src/dde25/uitheme.h）。这里保留一份等价的浅色主题写法，仅供对照。
+ */
+
 QFrame#CalendarBackground {
-    background-color: rgba(220, 220, 220, 200)
+    background-color: rgba(255, 255, 255, 255)
 }
 
 QLabel#CalendarHeaderWeekday {
     font-size: 14px;
-    color: #696969;
+    color: #414D68;
 }
 
 QLabel#CalendarHeaderWeekend {
     font-size: 14px;
-    color: #ff5b38;
+    color: #FF5B38;
 }
-

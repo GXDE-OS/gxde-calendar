@@ -24,6 +24,8 @@
 
 #include "sidebarcalendarwidget.h"
 
+#include "dde25/uitheme.h"
+
 #include <QLabel>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -260,19 +262,21 @@ void SidebarCalendarDayButton::paintEvent(QPaintEvent *event)
 
     if (m_selected) {
         painter.setPen(Qt::NoPen);
-        painter.setBrush(QColor("#2ca7f8"));
+        painter.setBrush(DDE25::accentColor());
         painter.drawEllipse(rectf);
-        painter.setPen(Qt::white);
+        painter.setPen(DDE25::onAccentColor());
     } else if (m_today) {
-        painter.setPen(QColor("#2ca7f8"));
+        painter.setPen(DDE25::accentColor());
         painter.setBrush(Qt::NoBrush);
         painter.drawEllipse(rectf);
-        painter.setPen(QColor("#2ca7f8"));
+        painter.setPen(DDE25::accentColor());
     } else if (!m_inCurrentMonth) {
-        painter.setPen(QColor("#b2b2b2"));
+        painter.setPen(DDE25::textColor(DDE25::TextTertiary));
     } else {
         const int dow = m_date.dayOfWeek();
-        painter.setPen((dow == Qt::Saturday || dow == Qt::Sunday) ? QColor("#ff5b38") : QColor("#000000"));
+        painter.setPen((dow == Qt::Saturday || dow == Qt::Sunday)
+                           ? DDE25::alertColor()
+                           : DDE25::textColor());
     }
 
     painter.drawText(rectf, QString::number(m_date.day()), QTextOption(Qt::AlignCenter));

@@ -27,6 +27,7 @@
 #include "constants.h"
 #include "customframe.h"
 #include "dde25common.h"
+#include "uitheme.h"
 
 #include <QHBoxLayout>
 #include <QLocale>
@@ -80,48 +81,27 @@ void CWeekHeadView::setTheMe(int type)
 {
     m_themetype = type;
 
-    if (type == 0 || type == 1) {
-        const QColor textC = "#000000";
-        const QColor textBC(230, 238, 242);
+    // 月份标签、日期/农历文字、选中圆底、周末底、分割线：全部从三个主题色
+    // 及其透明度派生，深浅主题同一套写法（见 uitheme.h 的约束 1）
+    m_monthLabel->setBColor(DDE25::hoverColor());
+    m_monthLabel->setTextColor(DDE25::textColor());
 
-        m_monthLabel->setBColor(textBC);
-        m_monthLabel->setTextColor(textC);
+    m_backgroundCircleColor = DDE25::accentColor();
+    m_backgroundShowColor = DDE25::accentColor();
+    m_backgroundShowColor.setAlphaF(0.4);
+    m_Background_Weekend_Color = DDE25::hoverColor();
 
-        m_backgroundCircleColor = "#0081FF";
-        m_backgroundShowColor = "#2CA7F8";
-        m_backgroundShowColor.setAlphaF(0.4);
-        m_Background_Weekend_Color = "#DAE4ED";
+    m_defaultTextColor = DDE25::textColor(DDE25::TextSecondary);
+    m_currentDayTextColor = DDE25::onAccentColor();
+    m_defaultLunarColor = DDE25::textColor(DDE25::TextTertiary);
+    m_currentMonthColor = DDE25::textColor();
+    m_backgroundColor = DDE25::hoverColor();
+    m_dividingLineColor = DDE25::borderColor();
 
-        m_defaultTextColor = "#000000";
-        m_defaultTextColor.setAlphaF(0.7);
-        m_currentDayTextColor = "#FFFFFF";
-        m_defaultLunarColor = "#898989";
-        m_currentMonthColor = "#000000";
-        m_backgroundColor = "#E6EEF2";
-        m_dividingLineColor = QColor(0, 0, 0, 26);
-        m_solofestivalLunarColor = "#4DFF7272";
-    } else if (type == 2) {
-        QColor textBC = "#82AEC1";
-        textBC.setAlphaF(0.1);
-        m_monthLabel->setBColor(textBC);
-        m_monthLabel->setTextColor("#BF1D63");
-        m_backgroundCircleColor = "#0059D2";
-        m_backgroundShowColor = "#002AAF";
-        m_backgroundShowColor.setAlphaF(0.4);
-        m_Background_Weekend_Color = "#333D4A";
-
-        m_defaultTextColor = "#FFFFFF";
-        m_defaultTextColor.setAlphaF(0.7);
-        m_currentDayTextColor = "#C0C6D4";
-        m_defaultLunarColor = "#6886BA";
-
-        m_currentMonthColor = "#000000";
-        m_backgroundColor = "#82AEC1";
-        m_backgroundColor.setAlphaF(0.1);
-        m_dividingLineColor = QColor(255, 255, 255, 20);
-        m_solofestivalLunarColor = "#4DFF7272";
-    }
-    m_weekendsTextColor = DDE25::systemActiveColor();
+    // 节气（农历）用警示色，周末文字同警示色 —— 与年视图/侧栏小日历一致
+    m_solofestivalLunarColor = DDE25::alertColor();
+    m_solofestivalLunarColor.setAlphaF(0.3);
+    m_weekendsTextColor = DDE25::alertColor();
     update();
 }
 

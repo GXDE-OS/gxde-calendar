@@ -28,6 +28,7 @@
 #include "dde25common.h"
 #include "monthdayview.h"
 #include "monthview.h"
+#include "uitheme.h"
 
 #include <QHBoxLayout>
 #include <QKeyEvent>
@@ -81,7 +82,7 @@ CMonthWindow::CMonthWindow(QWidget *parent)
 
     m_today = new QPushButton(tr("Today"), top);
     m_today->setObjectName("MonthWindowTodayButton");
-    m_today->setFixedSize(DDEMonthCalendar::MTodayWindth, DDEMonthCalendar::MTodayHeight);
+    m_today->setFixedSize(DDECalendar::TodayButtonWidth, DDECalendar::TodayButtonHeight);
     QFont todayFont;
     todayFont.setWeight(QFont::Medium);
     todayFont.setPixelSize(DDECalendar::FontSizeFourteen);
@@ -219,25 +220,11 @@ void CMonthWindow::setTheMe(int type)
     m_monthView->setTheMe(type);
     m_monthDayView->setTheMe(type);
 
-    QColor yearTextColor("#000000");
-    QColor lunarTextColor("#000000");
-    if (type == 2) {
-        yearTextColor = QColor("#FFFFFF");
-        lunarTextColor = QColor("#FFFFFF");
-    }
-    yearTextColor.setAlphaF(0.8);
-    lunarTextColor.setAlphaF(0.5);
-
-    m_yearLabel->setStyleSheet(QString("color: rgba(%1,%2,%3,%4);")
-                                   .arg(yearTextColor.red())
-                                   .arg(yearTextColor.green())
-                                   .arg(yearTextColor.blue())
-                                   .arg(yearTextColor.alphaF()));
-    m_yearLunarLabel->setStyleSheet(QString("color: rgba(%1,%2,%3,%4);")
-                                        .arg(lunarTextColor.red())
-                                        .arg(lunarTextColor.green())
-                                        .arg(lunarTextColor.blue())
-                                        .arg(lunarTextColor.alphaF()));
+    // 年份与农历年只是正文的两个层级，取中性色的透明度派生，不按主题分支写黑白
+    m_yearLabel->setStyleSheet(
+        QStringLiteral("color: %1;").arg(DDE25::css(DDE25::textColor(DDE25::TextSecondary))));
+    m_yearLunarLabel->setStyleSheet(
+        QStringLiteral("color: %1;").arg(DDE25::css(DDE25::textColor(DDE25::TextTertiary))));
 }
 
 void CMonthWindow::setLunarVisible(bool visible)

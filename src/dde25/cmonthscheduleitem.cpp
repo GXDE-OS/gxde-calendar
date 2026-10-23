@@ -24,6 +24,7 @@
 
 #include "cmonthscheduleitem.h"
 #include "dde25common.h"
+#include "uitheme.h"
 #include "schedulecolors.h"
 
 #include <QFontMetrics>
@@ -134,8 +135,7 @@ void CMonthScheduleItem::paint(QPainter *painter, const QStyleOptionGraphicsItem
         QRectF tRect(r.x() + 2.5, r.y() + 2.5, labelwidth - 3, labelheight - 3);
         painter->save();
         painter->setRenderHints(QPainter::Antialiasing);
-        QColor selcolor = (DDE25::themeType() == 2) ? QColor("#FFFFFF") : QColor("#000000");
-        selcolor.setAlphaF(0.08);
+        const QColor selcolor = DDE25::hoverColor();
         QPen pen;
         pen.setColor(selcolor);
         pen.setWidthF(1);

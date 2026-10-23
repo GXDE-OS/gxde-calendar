@@ -16,7 +16,9 @@
  */
 
 #include "calendarviews.h"
+#include "constants.h"
 #include "dde25/dde25common.h"
+#include "dde25/uitheme.h"
 
 #include <QPainter>
 #include <QLocale>
@@ -28,10 +30,8 @@
 #include <QVBoxLayout>
 
 namespace {
-const QColor AccentColor("#2ca7f8");
-const QColor WeekendColor("#ff5b38");
-const QColor DefaultColor("#000000");
-const QColor MutedColor("#b2b2b2");
+// 颜色一律取自 DDE25 的主题色（三个色相），这里不再就地写字面值，
+// 见 dde25/uitheme.h 的约束 1
 const int MonthHeaderHeight = 22;
 const int YearToolbarHeight = 66;
 }
@@ -51,26 +51,15 @@ YearView::YearView(QWidget *parent) : QWidget(parent) {
     yearFont.setWeight(QFont::Medium);
     yearFont.setPixelSize(24);
     m_yearLabel->setFont(yearFont);
-    m_yearLabel->setStyleSheet("color: rgba(0, 0, 0, 0.8);");
+    m_yearLabel->setStyleSheet(
+        QStringLiteral("color: %1;").arg(DDE25::css(DDE25::textColor())));
 
     m_todayFrame = new QFrame(toolbar);
     m_todayFrame->setObjectName("YearTodayFrame");
     m_todayFrame->setStyleSheet(
-        "QFrame#YearTodayFrame {"
-        "  background-color: white;"
-        "  border: 1px solid rgba(0, 0, 0, 0.1);"
-        "  border-radius: 4px;"
-        "}"
-        "QFrame#YearTodayFrame QPushButton {"
-        "  background-color: transparent;"
-        "  border: none;"
-        "  color: #000000;"
-        "  border-radius: 3px;"
-        "}"
-        "QFrame#YearTodayFrame QPushButton:hover {"
-        "  background-color: rgba(0, 0, 0, 0.05);"
-        "}");
-    m_todayFrame->setFixedHeight(36);
+        DDE25::segmentedStyleSheet(QStringLiteral("YearTodayFrame"),
+                                   QStringLiteral("QFrame")));
+    m_todayFrame->setFixedHeight(DDECalendar::TodayButtonHeight);
 
     QHBoxLayout *todayLayout = new QHBoxLayout(m_todayFrame);
     todayLayout->setContentsMargins(0, 0, 0, 0);
@@ -78,20 +67,21 @@ YearView::YearView(QWidget *parent) : QWidget(parent) {
 
     m_prevButton = new QPushButton(m_todayFrame);
     m_prevButton->setIcon(DDE25::navArrowIcon(false, DDE25::themeType()));
-    m_prevButton->setIconSize(QSize(16, 16));
-    m_prevButton->setFixedSize(36, 36);
+    m_prevButton->setIconSize(QSize(DDE25::Metric::Icon, DDE25::Metric::Icon));
+    m_prevButton->setFixedSize(DDECalendar::NavButtonSize, DDECalendar::NavButtonSize);
     m_prevButton->setFocusPolicy(Qt::NoFocus);
     m_prevButton->setCursor(Qt::PointingHandCursor);
 
     m_todayButton = new QPushButton(tr("Today"), m_todayFrame);
-    m_todayButton->setFixedSize(88, 36);
+    m_todayButton->setFixedSize(DDECalendar::TodayButtonWidth,
+                                DDECalendar::TodayButtonHeight);
     m_todayButton->setFocusPolicy(Qt::NoFocus);
     m_todayButton->setCursor(Qt::PointingHandCursor);
 
     m_nextButton = new QPushButton(m_todayFrame);
     m_nextButton->setIcon(DDE25::navArrowIcon(true, DDE25::themeType()));
-    m_nextButton->setIconSize(QSize(16, 16));
-    m_nextButton->setFixedSize(36, 36);
+    m_nextButton->setIconSize(QSize(DDE25::Metric::Icon, DDE25::Metric::Icon));
+    m_nextButton->setFixedSize(DDECalendar::NavButtonSize, DDECalendar::NavButtonSize);
     m_nextButton->setFocusPolicy(Qt::NoFocus);
     m_nextButton->setCursor(Qt::PointingHandCursor);
 
@@ -193,7 +183,7 @@ void YearView::paintEvent(QPaintEvent *event) {
 
         // Month title
         painter.setFont(headerFont);
-        painter.setPen(DefaultColor);
+        painter.setPen(DDE25::textColor());
         const QRect headerRect(area.x(), area.y(), area.width(),
           MonthHeaderHeight);
         painter.drawText(headerRect, Qt::AlignCenter, QLocale().toString(
@@ -227,14 +217,14 @@ void YearView::paintEvent(QPaintEvent *event) {
                 QRect highlight(0, 0, side, side);
                 highlight.moveCenter(cell.center());
                 painter.setPen(Qt::NoPen);
-                painter.setBrush(AccentColor);
-                const int radius = qMin(6, side / 2);
+                painter.setBrush(DDE25::accentColor());
+                const int radius = qMin(DDE25::Metric::RadiusItem, side / 2);
                 painter.drawRoundedRect(highlight, radius, radius);
-                painter.setPen(Qt::white);
+                painter.setPen(DDE25::onAccentColor());
             } else {
                 const int dow = date.dayOfWeek();
                 painter.setPen((dow == Qt::Saturday || dow == Qt::Sunday) ?
-                    WeekendColor : DefaultColor);
+                    DDE25::alertColor() : DDE25::textColor());
             }
             painter.drawText(cell, Qt::AlignCenter, QString::number(dayNum));
         }
@@ -334,7 +324,7 @@ void WeekView::paintEvent(QPaintEvent *event) {
         painter.setFont(headerFont);
         const int dow = date.dayOfWeek();
         painter.setPen((dow == Qt::Saturday || dow == Qt::Sunday) ?
-            WeekendColor : MutedColor);
+            DDE25::alertColor() : DDE25::textColor(DDE25::TextSecondary));
         painter.drawText(QRect(cell.x(), 12, cellW, 24), Qt::AlignCenter,
             QLocale().dayName(date.dayOfWeek(),
                 QLocale::ShortFormat));
@@ -345,18 +335,18 @@ void WeekView::paintEvent(QPaintEvent *event) {
         painter.setFont(dayFont);
         if (date == m_currentDate) {
             painter.setPen(Qt::NoPen);
-            painter.setBrush(AccentColor);
+            painter.setBrush(DDE25::accentColor());
             painter.drawEllipse(dayCircle);
-            painter.setPen(Qt::white);
+            painter.setPen(DDE25::onAccentColor());
         } else if (date == today) {
-            painter.setPen(AccentColor);
+            painter.setPen(DDE25::accentColor());
             painter.setBrush(Qt::NoBrush);
             painter.drawEllipse(dayCircle);
             painter.setPen(dow == Qt::Saturday || dow == Qt::Sunday ?
-                WeekendColor : DefaultColor);
+                DDE25::alertColor() : DDE25::textColor());
         } else {
             painter.setPen(dow == Qt::Saturday || dow == Qt::Sunday ?
-                WeekendColor : DefaultColor);
+                DDE25::alertColor() : DDE25::textColor());
         }
         painter.drawText(dayCircle, Qt::AlignCenter,
             QString::number(date.day()));
@@ -397,7 +387,7 @@ void DayView::paintEvent(QPaintEvent *event) {
     QFont weekdayFont = painter.font();
     weekdayFont.setPixelSize(20);
     painter.setFont(weekdayFont);
-    painter.setPen(AccentColor);
+    painter.setPen(DDE25::accentColor());
     painter.drawText(QRect(0, height() / 2 - 120, width(), 30), Qt::AlignCenter,
         QLocale().dayName(m_currentDate.dayOfWeek(),
             QLocale::LongFormat));
@@ -409,7 +399,7 @@ void DayView::paintEvent(QPaintEvent *event) {
     painter.setFont(dayFont);
     const int dow = m_currentDate.dayOfWeek();
     painter.setPen(dow == Qt::Saturday || dow == Qt::Sunday ?
-        WeekendColor : DefaultColor);
+        DDE25::alertColor() : DDE25::textColor());
     painter.drawText(QRect(0, height() / 2 - 80, width(), 140), Qt::AlignCenter,
         QString::number(m_currentDate.day()));
 
@@ -417,7 +407,7 @@ void DayView::paintEvent(QPaintEvent *event) {
     QFont dateFont = painter.font();
     dateFont.setPixelSize(20);
     painter.setFont(dateFont);
-    painter.setPen(MutedColor);
+    painter.setPen(DDE25::textColor(DDE25::TextSecondary));
     painter.drawText(QRect(0, height() / 2 + 70, width(), 30), Qt::AlignCenter,
         QLocale().toString(m_currentDate, "yyyy年 MMM"));
 }

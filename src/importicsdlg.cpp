@@ -18,6 +18,7 @@
 #include "importicsdlg.h"
 
 #include "dde25/dde25common.h"
+#include "dde25/uitheme.h"
 
 #include <dframe.h>
 
@@ -271,15 +272,13 @@ void CImportIcsDlg::updateAcceptState()
         return;
     }
 
-    const int themeType = DDE25::themeType();
-    QColor color = (themeType == 2) ? QColor(Qt::white) : QColor(Qt::black);
-    color.setAlphaF(0.5);
+    QColor color = DDE25::textColor(DDE25::TextSecondary);
 
     if (m_fileEdit->text().trimmed().isEmpty()) {
         m_infoLabel->setText(tr("Choose an .ics file to import"));
     } else if (!m_hints.valid) {
         //读不了文件：可能是路径不对，也可能不是 ICS
-        color = QColor("#F25C5C");
+        color = DDE25::alertColor();
         m_infoLabel->setText(tr("Cannot read this file"));
     } else {
         m_infoLabel->setText(tr("%1 events in this file").arg(m_hints.eventCount));
