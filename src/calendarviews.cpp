@@ -21,6 +21,7 @@
 #include "dde25/uitheme.h"
 
 #include <QPainter>
+#include <QFontMetrics>
 #include <QLocale>
 #include <QMouseEvent>
 #include <QLabel>
@@ -227,6 +228,24 @@ void YearView::paintEvent(QPaintEvent *event) {
                     DDE25::alertColor() : DDE25::textColor());
             }
             painter.drawText(cell, Qt::AlignCenter, QString::number(dayNum));
+
+            // 有节日时在日期数字的右上角点个红点（格子太小，不显示节日名）
+            if (DDE25::LunarCache::instance()->hasFestival(date)) {
+                const QFontMetrics fm(dayFont);
+                const QString dayText = QString::number(dayNum);
+                const qreal dotR = 2.0;
+                // drawText 是居中绘制，按字宽/字高反推出文字框的右上角；
+                // 再往右外挪一个半径多，让点落在数字外侧的角上（不然细窄的
+                // 数字会让它看上去正压在数字上方）
+                const qreal x = cell.center().x()
+                                + fm.horizontalAdvance(dayText) / 2.0 + dotR + 4.0;
+                const qreal y = cell.center().y() - fm.height() / 2.0 + dotR * 0.5;
+                painter.save();
+                painter.setPen(Qt::NoPen);
+                painter.setBrush(DDE25::alertColor());
+                painter.drawEllipse(QPointF(x, y), dotR, dotR);
+                painter.restore();
+            }
         }
     }
 }

@@ -129,6 +129,10 @@ public:
     // 已按白名单过滤，只保留重要节日；没有节日时返回空列表。
     QStringList festivalList(const QDate &date) const;
 
+    // 该天是否有（白名单内的）重要节日；顺带确保所在月已缓存。
+    // 供年/日视图画「有节日」小圆点用（格子太小，不显示节日名）。
+    bool hasFestival(const QDate &date);
+
     // 清空缓存（黄历服务数据刷新后调用）。
     void clear();
 

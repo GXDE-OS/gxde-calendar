@@ -459,22 +459,39 @@ void CDayMonthWidget::paintCell(QWidget *cell)
     painter.setFont(m_dayNumFont);
     painter.drawText(rect, Qt::AlignCenter, dayNum);
 
+    // 小圆点只画在当前月的格子上
+    const bool isCurrentMonth = m_selectDate.month() == getCellDate(pos).month();
+    const bool hasFestival = isCurrentMonth
+                             && DDE25::LunarCache::instance()->hasFestival(getCellDate(pos));
+
+    int dotR = int(cell->width() * 0.1);
+    if (dotR < 4) {
+        dotR = 4;
+    } else if (dotR > 7) {
+        dotR = 7;
+    }
+
+    // 右上角节日小圆点（格子太小，只点个点、不显示节日名）
+    if (hasFestival) {
+        painter.save();
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(QBrush(DDE25::alertColor()));
+        painter.drawEllipse(cell->width() - dotR - 6, 4, dotR, dotR);
+        painter.restore();
+    }
+
     // 右上角日程小圆点
     if (m_vlineflag.size() == DDEDayCalendar::PainterCellNum && m_vlineflag[pos]) {
-        if (m_selectDate.month() == getCellDate(pos).month()) {
+        if (isCurrentMonth) {
             painter.save();
             QPen pen;
             pen.setWidth(2);
             pen.setColor(m_ceventColor);
             pen.setBrush(QBrush(m_ceventColor));
             painter.setPen(Qt::NoPen);
-            int r = int(cell->width() * 0.1);
-            if (r < 4) {
-                r = 4;
-            } else if (r > 7) {
-                r = 7;
-            }
-            painter.drawEllipse(cell->width() - r - 6, 4, r, r);
+            // 已经有节日点时往左让开，免得两个点叠在一起
+            const int offset = hasFestival ? dotR + 2 : 0;
+            painter.drawEllipse(cell->width() - dotR - 6 - offset, 4, dotR, dotR);
             painter.restore();
         }
     }

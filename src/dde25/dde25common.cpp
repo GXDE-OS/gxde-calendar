@@ -309,6 +309,15 @@ QStringList LunarCache::festivalList(const QDate &date) const
     return keep;
 }
 
+bool LunarCache::hasFestival(const QDate &date)
+{
+    if (!date.isValid()) {
+        return false;
+    }
+    ensureMonth(date.year(), date.month());
+    return !festivalList(date).isEmpty();
+}
+
 void LunarCache::clear()
 {
     m_cache.clear();
