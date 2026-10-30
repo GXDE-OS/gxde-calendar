@@ -51,6 +51,7 @@ int monthRowsPerCell(int sceneHeight, int itemHeight)
 }
 
 QVector<MonthBlock> layoutMonthBlocks(const QMap<QDate, DSchedule::List> &data,
+                                      const QMap<QDate, QStringList> &festivals,
                                       const QDate &beginDate,
                                       int sceneWidth, int sceneHeight, int itemHeight)
 {
@@ -80,7 +81,7 @@ QVector<MonthBlock> layoutMonthBlocks(const QMap<QDate, DSchedule::List> &data,
                 // 同一条日程（重复日程按天展开后仍指向同一个对象）在一周里只画一次
                 bool have = false;
                 for (const DSchedule::Ptr &p : schedules) {
-                    if (p == info) {
+                    if (!info.isNull() && p == info) {
                         have = true;
                         break;
                     }
@@ -97,11 +98,37 @@ QVector<MonthBlock> layoutMonthBlocks(const QMap<QDate, DSchedule::List> &data,
             bool state = false;   // true 表示「还有 N 项」
             int num = 0;
             DSchedule::Ptr tData;
+            bool isFestival = false;  // true 表示这是节日块（不可编辑）
+            QString festivalName;
         };
 
         QVector<RangeInfo> rangeList;
         QVector<int> columnCount;
         columnCount.fill(0, 7);
+
+        // 把这一周里的节日也收集进来（单日、每个节日单独一项、不参与重复日程的去重）
+        for (const QDate &fdate : festivals.keys()) {
+            if (fdate < weekBegin || fdate > weekEnd) {
+                continue;
+            }
+            const QStringList names = festivals.value(fdate);
+            if (names.isEmpty()) {
+                continue;
+            }
+            const int pos = static_cast<int>(weekBegin.daysTo(fdate));
+            for (const QString &name : names) {
+                RangeInfo info;
+                info.bdate = fdate;
+                info.edate = fdate;
+                info.tData = DSchedule::Ptr();
+                info.isFestival = true;
+                info.festivalName = name;
+                rangeList.append(info);
+                if (pos >= 0 && pos < columnCount.size()) {
+                    ++columnCount[pos];
+                }
+            }
+        }
 
         for (const DSchedule::Ptr &s : schedules) {
             QDate tBegin = s->dtStart().date();
@@ -182,6 +209,8 @@ QVector<MonthBlock> layoutMonthBlocks(const QMap<QDate, DSchedule::List> &data,
                                 shown.edate = weekBegin.addDays(postion - 1);
                                 shown.state = false;
                                 shown.tData = cur.tData;
+                                shown.isFestival = cur.isFestival;
+                                shown.festivalName = cur.festivalName;
                                 packedRows[row].append(shown);
                             }
                             RangeInfo more;
@@ -208,6 +237,8 @@ QVector<MonthBlock> layoutMonthBlocks(const QMap<QDate, DSchedule::List> &data,
                             shown.edate = weekBegin.addDays(postion - 1);
                             shown.state = false;
                             shown.tData = cur.tData;
+                            shown.isFestival = cur.isFestival;
+                            shown.festivalName = cur.festivalName;
                             packedRows[scheduleRow].append(shown);
                         }
                         ++row;
@@ -220,6 +251,8 @@ QVector<MonthBlock> layoutMonthBlocks(const QMap<QDate, DSchedule::List> &data,
                 shown.edate = weekBegin.addDays(postion - 1);
                 shown.state = false;
                 shown.tData = cur.tData;
+                shown.isFestival = cur.isFestival;
+                shown.festivalName = cur.festivalName;
                 if (scheduleRow < packedRows.size()) {
                     packedRows[scheduleRow].append(shown);
                 }
@@ -242,6 +275,8 @@ QVector<MonthBlock> layoutMonthBlocks(const QMap<QDate, DSchedule::List> &data,
                 block.isMore = info.state;
                 block.moreCount = info.num;
                 block.schedule = info.tData;
+                block.isFestival = info.isFestival;
+                block.festival = info.festivalName;
                 // 跨天块取被裁到的那一段的起始日；键盘导航和右键新建都要用它定位
                 block.date = info.bdate;
                 result.append(block);

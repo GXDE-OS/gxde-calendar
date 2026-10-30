@@ -29,6 +29,7 @@
 #include "dde25common.h"
 #include "holidayapi.h"
 #include "cmonthscheduleitem.h"
+#include "cmonthfestivalitem.h"
 #include "cmonthschedulenumitem.h"
 #include "schedulelayout.h"
 #include "uitheme.h"
@@ -231,8 +232,20 @@ void CMonthGraphicsview::updateScheduleItems()
     }
 
     const int itemHeight = DDEMonthCalendar::MonthScheduleItemHeight;
+
+    // 收集这 42 格里每一天的节日（每个节日单独一项），传给排布算法当不可编辑的块
+    QMap<QDate, QStringList> festivals;
+    DDE25::LunarCache *cache = DDE25::LunarCache::instance();
+    for (const QDate &date : m_showDates) {
+        cache->ensureMonth(date.year(), date.month());
+        const QStringList names = cache->festivalList(date);
+        if (!names.isEmpty()) {
+            festivals.insert(date, names);
+        }
+    }
+
     const QVector<DDE25::MonthBlock> blocks =
-        DDE25::layoutMonthBlocks(m_scheduleInfo, m_showDates.first(), sceneW, sceneH, itemHeight);
+        DDE25::layoutMonthBlocks(m_scheduleInfo, festivals, m_showDates.first(), sceneW, sceneH, itemHeight);
 
     for (const DDE25::MonthBlock &block : blocks) {
         if (block.isMore) {
@@ -247,6 +260,14 @@ void CMonthGraphicsview::updateScheduleItems()
             numItem->setDate(block.date);
             m_Scene->addItem(numItem);
             m_scheduleItems.append(numItem);
+            continue;
+        }
+
+        if (block.isFestival) {
+            CMonthFestivalItem *item = new CMonthFestivalItem(block.rect);
+            item->setData(block.festival, block.date);
+            m_Scene->addItem(item);
+            m_scheduleItems.append(item);
             continue;
         }
 

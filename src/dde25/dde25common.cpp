@@ -219,6 +219,96 @@ QString LunarCache::lunarText(const QDate &date) const
     return dayInfo.mTerm;
 }
 
+namespace {
+
+// 仅保留法定/重要的节日，过滤掉「世界音乐日」「国际老人节」之类的小众纪念日。
+const QStringList &importantFestivals()
+{
+    static const QStringList list = {
+        // 原有：法定/常用
+        QStringLiteral("元旦"),
+        QStringLiteral("春节"),
+        QStringLiteral("元宵节"),
+        QStringLiteral("清明节"),
+        QStringLiteral("清明"),
+        QStringLiteral("劳动节"),
+        QStringLiteral("国际劳动节"),
+        QStringLiteral("端午节"),
+        QStringLiteral("七夕"),
+        QStringLiteral("七夕情人节"),
+        QStringLiteral("中秋节"),
+        QStringLiteral("重阳节"),
+        QStringLiteral("腊八节"),
+        QStringLiteral("除夕"),
+        QStringLiteral("妇女节"),
+        QStringLiteral("国际劳动妇女节"),
+        QStringLiteral("青年节"),
+        QStringLiteral("儿童节"),
+        QStringLiteral("国际儿童节"),
+        QStringLiteral("建军节"),
+        QStringLiteral("教师节"),
+        QStringLiteral("中国教师节"),
+        QStringLiteral("国庆节"),
+        // 新增
+        QStringLiteral("抗日战争胜利纪念"),
+        QStringLiteral("中国人民抗日战争胜利纪念日"),
+        QStringLiteral("建党节"),
+        QStringLiteral("中共诞辰"),
+        QStringLiteral("香港回归纪念日"),
+        QStringLiteral("父亲节"),
+        QStringLiteral("母亲节"),
+        QStringLiteral("愚人节"),
+        QStringLiteral("全民国家安全教育日"),
+        QStringLiteral("植树节"),
+        QStringLiteral("学雷锋日"),
+        QStringLiteral("学雷锋纪念日"),
+        QStringLiteral("情人节"),
+        QStringLiteral("南京大屠杀公祭日"),
+        QStringLiteral("南京大屠杀纪念日"),
+        QStringLiteral("澳门回归纪念日"),
+        QStringLiteral("澳门回归纪念"),
+        QStringLiteral("平安夜"),
+        QStringLiteral("圣诞节"),
+        QStringLiteral("毛泽东诞辰纪念日"),
+        QStringLiteral("毛泽东诞辰纪念"),
+    };
+    return list;
+}
+
+} // namespace
+
+QStringList LunarCache::festivalList(const QDate &date) const
+{
+    const CaLunarDayInfo dayInfo = m_cache.value(date);
+
+    const QStringList important = importantFestivals();
+    QStringList keep;
+
+    // 清明节既是节气也是节日，黄历服务把它放在 mTerm 字段而非 mSolarFestival，单独处理。
+    if (dayInfo.mTerm == QStringLiteral("清明")) {
+        keep.append(QStringLiteral("清明节"));
+    }
+
+    const QStringList solar = dayInfo.mSolarFestival.split(" ", Qt::SkipEmptyParts);
+    for (const QString &f : solar) {
+        if (important.contains(f)) {
+            // 服务里节气名是「清明」，这里统一显示成「清明节」
+            keep.append(f == QStringLiteral("清明") ? QStringLiteral("清明节") : f);
+        }
+    }
+
+    // 农历节日（如「春节」「端午节」），本机黄历服务多半把这类名字也放进公历节日字段，
+    // 这里再扫一遍农历字段以防万一。
+    const QStringList lunar = dayInfo.mLunarFestival.split(" ", Qt::SkipEmptyParts);
+    for (const QString &f : lunar) {
+        if (important.contains(f) && !keep.contains(f)) {
+            keep.append(f);
+        }
+    }
+
+    return keep;
+}
+
 void LunarCache::clear()
 {
     m_cache.clear();

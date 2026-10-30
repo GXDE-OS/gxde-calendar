@@ -43,18 +43,22 @@
 #include <QDateTime>
 #include <QMap>
 #include <QRect>
+#include <QStringList>
 #include <QVector>
 
 namespace DDE25 {
 
-// 月视图里一块要画的东西：一条日程，或一个「还有 N 项」
+// 月视图里一块要画的东西：一条日程，或一个节日，或一个「还有 N 项」
 struct MonthBlock {
     QRect rect;
-    DSchedule::Ptr schedule;   // isMore 为 false 时有效
+    DSchedule::Ptr schedule;   // isMore / isFestival 为 false 时有效
     bool isMore = false;
     int moreCount = 0;
     // 这一块的起始日期（跨天块取被裁到的那一天）
     QDate date;
+    // 节日块：isFestival 为 true 时有效，按日程样式画一个不可编辑的节日标签
+    bool isFestival = false;
+    QString festival;
 };
 
 // 时间上互相重叠的一组日程，组内要在一列里并排画
@@ -65,17 +69,20 @@ struct ScheduleCluster {
 };
 
 /**
- * @brief layoutMonthBlocks   排布月视图 42 格里的日程块
+ * @brief layoutMonthBlocks   排布月视图 42 格里的日程块与节日块
  *
  * @param data          按天分组的日程（querySchedulesWithParameter 的结果）
+ * @param festivals     按天分组的节日名列表（公历/农历节日，每个节日单独一项）
  * @param beginDate     42 格中第一格的日期
  * @param sceneWidth    42 格绘图区的宽
  * @param sceneHeight   42 格绘图区的高
  * @param itemHeight    一行日程块的高度
  *
  * 每格能放几行由格子高度决定；放不下的列会在最后一行收成「还有 N 项」。
+ * 节日块与日程块共用同一套行打包，因此永远不会和日程块重叠。
  */
 QVector<MonthBlock> layoutMonthBlocks(const QMap<QDate, DSchedule::List> &data,
+                                      const QMap<QDate, QStringList> &festivals,
                                       const QDate &beginDate,
                                       int sceneWidth, int sceneHeight, int itemHeight);
 

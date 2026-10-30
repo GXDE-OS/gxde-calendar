@@ -125,6 +125,10 @@ public:
     // 单元格上显示的农历文本：初一显示月名，有节气则优先显示节气。
     QString lunarText(const QDate &date) const;
 
+    // 单元格里要画的节日标签，每个节日单独一项（如「国庆节」「清明节」）。
+    // 已按白名单过滤，只保留重要节日；没有节日时返回空列表。
+    QStringList festivalList(const QDate &date) const;
+
     // 清空缓存（黄历服务数据刷新后调用）。
     void clear();
 

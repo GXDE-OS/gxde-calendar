@@ -70,6 +70,7 @@ list(APPEND SRCS
 ./dde25/schedulelayout.h
 ./dde25/schedulequery.h
 ./dde25/cmonthscheduleitem.h
+./dde25/cmonthfestivalitem.h
 ./dde25/cmonthschedulenumitem.h
 ./dde25/scheduleitem.h
 ./dde25/calldayscheduleitem.h
@@ -115,6 +116,7 @@ list(APPEND SRCS
 ./dde25/schedulelayout.cpp
 ./dde25/schedulequery.cpp
 ./dde25/cmonthscheduleitem.cpp
+./dde25/cmonthfestivalitem.cpp
 ./dde25/cmonthschedulenumitem.cpp
 ./dde25/scheduleitem.cpp
 ./dde25/calldayscheduleitem.cpp
