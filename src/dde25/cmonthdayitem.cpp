@@ -126,23 +126,35 @@ void CMonthDayItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
         fillRect.setRect(this->rect().x(), this->rect().y() + 4, this->rect().width(), hh);
     }
 
-    // 如果为当前时间
-    if (m_Date == QDate::currentDate()) {
+    // 今日高亮：参考 DDE 15，用一整块圆角主色底代替只圈住数字的小圆，
+    // 日期与农历都换成底色上的文字色，远看也能一眼找到今天。
+    // 色块只铺在日期/农历所在的头部（月视图的日程块从 y=31 开始），
+    // 这样既醒目，又不会把当天的日程压在色块下面。
+    const bool isToday = m_Date == QDate::currentDate();
+    if (isToday) {
         painter->setOpacity(1);
-        QFont tFont = m_dayNumFont;
-        tFont.setPixelSize(DDECalendar::FontSizeTwenty);
-        painter->setFont(tFont);
-        painter->setPen(m_dayNumCurrentColor);
         painter->save();
-        painter->setBrush(QBrush(m_currentColor));
         painter->setPen(Qt::NoPen);
+        painter->setBrush(QBrush(m_currentColor));
+        // 有农历时色块横贯整格，把日期和农历一起包进去；
+        // 不显示农历时日期是居中的，色块也收成数字大小，免得成一条空横条。
+        QRectF todayRect;
         if (m_LunarVisible) {
-            painter->drawEllipse(QRectF(this->rect().x() + 6, this->rect().y() + 4, hh - 8, hh - 8));
+            todayRect.setRect(this->rect().x() + 4,
+                              this->rect().y() + 3,
+                              this->rect().width() - 8,
+                              hh - 8);
         } else {
-            painter->drawEllipse(QRectF((this->rect().width() - hh + 8) / 2 + this->rect().x(),
-                                        this->rect().y() + 4, hh - 8, hh - 8));
+            const qreal blockWidth = hh - 8 + 16;
+            todayRect.setRect(this->rect().x() + (this->rect().width() - blockWidth) / 2,
+                              this->rect().y() + 3,
+                              blockWidth,
+                              hh - 8);
         }
+        painter->drawRoundedRect(todayRect, DDE25::Metric::RadiusItem,
+                                 DDE25::Metric::RadiusItem);
         painter->restore();
+        painter->setPen(m_dayNumCurrentColor);
     } else {
         painter->setPen(m_dayNumColor);
     }
@@ -154,6 +166,12 @@ void CMonthDayItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
 
     // 绘制农历
     if (m_LunarVisible) {
+        painter->save();
+        if (isToday) {
+            // 今日的色块是不透明的，农历也要跟着不透明，否则非当前月的今日
+            // 会出现「实心色块 + 半透明农历」的错位感
+            painter->setOpacity(1);
+        }
         const QFontMetrics metrics(m_LunerFont);
         const int lunarWidth = metrics.horizontalAdvance(m_DayLunar);
 
@@ -178,7 +196,7 @@ void CMonthDayItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
             }
 
             painter->setFont(m_LunerFont);
-            painter->setPen(m_LunerColor);
+            painter->setPen(isToday ? m_dayNumCurrentColor : m_LunerColor);
             const QString firstLine = m_DayLunar.mid(0, 2);
             const QString secondLine = m_DayLunar.mid(2);
 
@@ -211,11 +229,12 @@ void CMonthDayItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
             }
 
             painter->setFont(m_LunerFont);
-            painter->setPen(m_LunerColor);
+            painter->setPen(isToday ? m_dayNumCurrentColor : m_LunerColor);
             painter->drawText(QRectF(this->rect().x() + this->rect().width() - 58,
                                      this->rect().y() + 6, 58, 18),
                               Qt::AlignCenter, m_DayLunar);
         }
+        painter->restore();
     }
 
     // 如果有焦点则绘制焦点效果
