@@ -1,6 +1,6 @@
 # Maintainer: CharOfString <root@charofstring.cc>
 pkgname=gxde-calendar-git
-pkgver=6.0.5
+pkgver=6.0.6
 pkgrel=1
 pkgdesc='Calendar software for GXDE OS'
 arch=('x86_64' 'aarch64')
